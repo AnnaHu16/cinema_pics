@@ -2,178 +2,133 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>CineMood AI - 专业版</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CineMood AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@900&display=swap" rel="stylesheet">
     <style>
-        body { 
-            background: #080808; color: #fff; 
-            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-            overflow: hidden;
-            -webkit-tap-highlight-color: transparent;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            min-height: 100vh; padding-bottom: 120px;
-        }
+        body { background: #080808; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
         
-        /* 顶部比例选择 */
-        #ratio-selector {
-            position: fixed; top: 10px; display: flex; gap: 15px; 
-            background: rgba(255,255,255,0.03); padding: 5px 15px;
-            border-radius: 40px; border: 1px solid rgba(255,255,255,0.06);
-            z-index: 100;
+        /* 1. 隐藏原始 DOM，只用来作为截图源 */
+        #render-source { position: fixed; left: -9999px; top: 0; }
+
+        /* 2. 拍立得样式设计 */
+        .polaroid { 
+            background: #fdfdfd; padding: 15px 15px 45px 15px; width: 600px; /* 固定宽度渲染更清晰 */
+            display: flex; flex-direction: column; align-items: center;
         }
-        .ratio-btn { font-size: 9px; font-weight: bold; color: #555; letter-spacing: 0.1em; transition: 0.3s; }
-        .ratio-btn.active { color: #fff; }
+        .photo-frame { width: 100%; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .res-16-9 .photo-frame { aspect-ratio: 16 / 9; }
+        .res-3-4 .photo-frame { aspect-ratio: 3 / 4; }
+        .res-1-1 .photo-frame { aspect-ratio: 1 / 1; }
 
-        /* 提示文字（常驻顶部） */
-        .tip-text { position: fixed; top: 55px; font-size: 10px; color: #666; letter-spacing: 0.3em; text-transform: uppercase; z-index: 90; }
-
-        /* 展示舞台：适配不同比例 */
-        #stage {
-            width: 90vw; max-width: 450px;
-            margin-top: 40px;
-            position: relative;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.9);
-            transition: all 0.4s ease;
-            border-radius: 2px;
-            overflow: hidden;
+        /* 3. 电影级字幕排版 */
+        .quote-area { margin-top: 35px; text-align: center; width: 100%; }
+        .quote-zh { 
+            color: #f1c40f; font-family: 'Noto Serif SC', serif; font-size: 28px; font-weight: 900;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8); margin-bottom: 10px; padding: 0 20px;
         }
+        .quote-en { color: #888; font-size: 14px; text-transform: uppercase; letter-spacing: 0.1em; padding: 0 30px; }
+        .movie-meta { color: #aaa; font-size: 11px; margin-top: 30px; width: 100%; text-align: right; padding-right: 10px; font-style: italic; }
 
-        /* 后端生成的合成好的完整PNG图片 */
-        #final-island {
-            width: 100%; height: auto; display: none; /* 初始隐藏 */
-        }
+        /* 4. 前端展示层 */
+        #display-area { width: 90vw; max-width: 450px; margin-top: 60px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
+        #final-img { width: 100%; height: auto; display: none; border-radius: 4px; }
+        #placeholder { width: 100%; aspect-ratio: 3/4; background: #111; display: flex; align-items: center; justify-content: center; border-radius: 4px; }
 
-        /* 加载占位格（默认3:4，高级emo灰） */
-        #placeholder {
-            width: 100%; aspect-ratio: 3 / 4; 
-            background: #111; display: flex; align-items: center; justify-content: center;
-        }
-
-        /* 比例类（前端视觉控制） */
-        #stage.res-16-9 { aspect-ratio: 16 / 9; max-width: 550px; }
-        #stage.res-3-4 { aspect-ratio: 3 / 4; }
-        #stage.res-1-1 { aspect-ratio: 1 / 1; max-width: 420px; }
-
-        /* 底部导航栏 */
-        .nav-bar {
-            position: fixed; bottom: 0; left: 0; right: 0;
-            background: rgba(18, 18, 18, 0.98); backdrop-filter: blur(20px);
-            padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
-            display: flex; justify-content: center;
-            border-top: 1px solid rgba(255,255,255,0.06); z-index: 80;
-        }
-
-        .gen-btn {
-            width: 100%; max-width: 320px; padding: 16px;
-            background: #fff; color: #000; border-radius: 50px;
-            font-size: 12px; font-weight: 900; letter-spacing: 0.25em; text-transform: uppercase;
-            box-shadow: 0 10px 25px rgba(255,255,255,0.05);
-            transition: all 0.2s ease;
-        }
-        .gen-btn:active { scale: 0.96; }
-        .gen-btn:disabled { background: #333; color: #555; box-shadow: none; }
-
+        .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #000; padding: 20px; display: flex; justify-content: center; padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
+        .gen-btn { width: 80%; max-width: 300px; padding: 15px; background: #fff; color: #000; border-radius: 50px; font-weight: 900; letter-spacing: 0.2em; }
+        .gen-btn:disabled { background: #333; color: #555; }
+        
+        .ratio-tabs { position: fixed; top: 20px; display: flex; gap: 15px; z-index: 100; }
+        .tab { font-size: 10px; color: #555; font-weight: bold; }
+        .tab.active { color: #fff; border-bottom: 2px solid #fff; }
     </style>
 </head>
-<body onload="checkWechat()">
+<body>
 
-    <div id="ratio-selector">
-        <button onclick="changeRatio('res-16-9', this, '169')" class="ratio-btn active">16:9电影</button>
-        <button onclick="changeRatio('res-3-4', this, '34')" class="ratio-btn">3:4小红书</button>
-        <button onclick="changeRatio('res-1-1', this, '11')" class="ratio-btn">1:1朋友圈</button>
+    <div class="ratio-tabs">
+        <button onclick="setRatio('res-16-9', this)" class="tab active">16:9</button>
+        <button onclick="setRatio('res-3-4', this)" class="tab">3:4</button>
+        <button onclick="setRatio('res-1-1', this)" class="tab">1:1</button>
     </div>
 
-    <p class="tip-text">↑ 长按拍立得保存至相册 ↑</p>
+    <div id="display-area">
+        <div id="placeholder"><p class="text-xs text-gray-700 tracking-widest">READY</p></div>
+        <img id="final-img" src="">
+    </div>
 
-    <div id="stage" class="res-16-9">
-        <div id="placeholder">
-            <div class="text-center">
-                <div id="spinner" class="animate-spin rounded-full h-7 w-7 border-b-2 border-white mx-auto mb-4" style="display:none;"></div>
-                <p id="status-text" class="text-[9px] text-gray-600 tracking-[0.4em] uppercase">READY</p>
+    <p class="text-[10px] text-gray-600 mt-6 tracking-[0.3em]">↑ 长按保存完整拍立得 ↑</p>
+
+    <div id="render-source">
+        <div id="capture-target" class="polaroid res-16-9">
+            <div class="photo-frame"><img id="source-img" src=""></div>
+            <div class="quote-area">
+                <p id="target-zh" class="quote-zh"></p>
+                <p id="target-en" class="quote-en"></p>
+                <p id="target-meta" class="movie-meta"></p>
             </div>
         </div>
-        
-        <img id="final-island" src="" alt="长按保存拍立得" contenteditable="false">
     </div>
 
-    <p class="text-[10px] text-gray-800 mt-12 tracking-[0.2em]">© CINEMOOD AI PROFESSIONAL</p>
-
     <div class="nav-bar">
-        <button id="gen-btn" onclick="generate()" class="gen-btn सक्रिय：scale-95 conversion">
-            <span id="btn-text">下一张 NEXT</span>
-        </button>
+        <button id="gen-btn" onclick="generate()" class="gen-btn">下一张 NEXT</button>
     </div>
 
     <script>
-        let currentRatioParam = '169'; // 后端需要这个参数来渲染不同比例的画布
+        let currentRatio = 'res-16-9';
 
-        function checkWechat() {
-            const ua = navigator.userAgent.toLowerCase();
-            if (ua.match(/MicroMessenger/i) == "micromessenger") {
-                // 可以在这里加一个微信特有的气泡提示，目前常驻提示已满足
-            }
-        }
-
-        function changeRatio(resClass, btn, ratioParam) {
-            // 前端只改变视觉比例
-            const stage = document.getElementById('stage');
-            stage.className = resClass;
-            currentRatioParam = ratioParam;
-
-            // 更新按钮状态
-            const btns = document.querySelectorAll('.ratio-btn');
-            btns.forEach(b => b.classList.remove('active'));
+        function setRatio(r, btn) {
+            currentRatio = r;
+            document.getElementById('capture-target').className = `polaroid ${r}`;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             btn.classList.add('active');
-            
-            // 切换比例后自动点击一次下一张，以生成新的正确比例图片
             generate();
         }
 
         async function generate() {
             const btn = document.getElementById('gen-btn');
-            const btnText = document.getElementById('btn-text');
+            const finalImg = document.getElementById('final-img');
             const placeholder = document.getElementById('placeholder');
-            const spinner = document.getElementById('spinner');
-            const statusText = document.getElementById('status-text');
-            const finalImg = document.getElementById('final-island');
-
+            
             btn.disabled = true;
-            btnText.innerText = "DEVELOPING...";
+            btn.innerText = "生成中...";
             placeholder.style.display = 'flex';
             finalImg.style.display = 'none';
-            spinner.style.display = 'block';
-            statusText.innerText = "FILM DEVELOPING";
 
             try {
-                // 调用后端合成接口，并传入用户选择的比例参数
-                const res = await fetch(`/api/generate?ratio=${currentRatioParam}`);
-                if (!res.ok) throw new Error("后端接口错误");
-                
+                const res = await fetch('/api/generate');
                 const data = await res.json();
-                
-                if (data.image) {
-                    // data.image 是后端渲染好的、包含所有内容的Base64拍立得图片
-                    finalImg.src = data.image;
+
+                // 1. 填充隐藏的 DOM
+                const sourceImg = document.getElementById('source-img');
+                sourceImg.src = data.image;
+                document.getElementById('target-zh').innerText = data.quote.zh;
+                document.getElementById('target-en').innerText = data.quote.en;
+                document.getElementById('target-meta').innerText = `— ${data.title} (${data.year})`;
+
+                // 2. 等待图片加载后截图
+                sourceImg.onload = async () => {
+                    const canvas = await html2canvas(document.getElementById('capture-target'), {
+                        scale: 2,
+                        useCORS: true,
+                        backgroundColor: '#fdfdfd'
+                    });
+                    
+                    // 3. 将截图转为 Base64 显示在主屏幕
+                    finalImg.src = canvas.toDataURL("image/png");
                     finalImg.style.display = 'block';
                     placeholder.style.display = 'none';
-                    btnText.innerText = "NEXT SHOT";
-                } else {
-                    throw new Error("图片渲染失败");
-                }
-
-            } catch (err) {
-                console.error(err);
-                statusText.innerText = "ERROR. TRY AGAIN.";
-                btnText.innerText = "TRY AGAIN";
-            } finally {
+                    btn.disabled = false;
+                    btn.innerText = "下一张 NEXT";
+                };
+            } catch (e) {
+                btn.innerText = "TRY AGAIN";
                 btn.disabled = false;
-                spinner.style.display = 'none';
             }
         }
-        
-        // 首次加载自动生成一张
+
         window.onload = generate;
     </script>
 </body>
