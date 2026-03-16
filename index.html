@@ -9,41 +9,39 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@900&display=swap" rel="stylesheet">
     <style>
         body { background: #080808; color: #fff; font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
-        #render-source { position: fixed; left: -9999px; top: 0; visibility: hidden; }
+        #render-source { position: fixed; left: -9999px; top: 0; }
         
-        /* 渲染源：固定宽度 */
         .polaroid { background: #fdfdfd; padding: 15px 15px 45px 15px; width: 600px; display: flex; flex-direction: column; align-items: center; }
         .photo-frame { width: 100%; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        
-        /* 动态比例类 */
         .res-16-9 .photo-frame { aspect-ratio: 16 / 9; }
         .res-3-4 .photo-frame { aspect-ratio: 3 / 4; }
         .res-1-1 .photo-frame { aspect-ratio: 1 / 1; }
 
+        /* 台词样式修改：由 center 改为 left */
         .quote-area { margin-top: 35px; text-align: left; width: 100%; padding: 0 35px; }
-        .quote-zh { color: #000; font-family: 'Noto Serif SC', serif; font-size: 28px; font-weight: 900; line-height: 1.5; margin-bottom: 12px; }
-        .quote-en { color: #777; font-family: 'Georgia', serif; font-size: 14px; text-transform: uppercase; letter-spacing: 0.1em; line-height: 1.4; }
-        .movie-meta { color: #aaa; font-size: 11px; margin-top: 35px; width: 100%; text-align: right; padding-right: 15px; font-style: italic; }
+        .quote-zh { color: #000000; font-family: 'Noto Serif SC', serif; font-size: 28px; font-weight: 900; line-height: 1.5; margin-bottom: 12px; word-break: break-all; }
+        .quote-en { color: #777777; font-family: 'Georgia', serif; font-size: 14px; text-transform: uppercase; letter-spacing: 0.1em; line-height: 1.4; }
+        
+        .movie-meta { color: #aaaaaa; font-size: 11px; margin-top: 35px; width: 100%; text-align: right; padding-right: 15px; font-style: italic; }
 
-        /* 展示区 */
-        #display-area { width: 92vw; max-width: 450px; margin-top: 60px; box-shadow: 0 20px 60px rgba(0,0,0,0.8); border-radius: 4px; overflow: hidden; position: relative; }
+        #display-area { width: 92vw; max-width: 450px; margin-top: 60px; box-shadow: 0 20px 60px rgba(0,0,0,0.8); border-radius: 4px; overflow: hidden; }
         #final-img { width: 100%; height: auto; display: none; }
         #placeholder { width: 100%; aspect-ratio: 3/4; background: #111; display: flex; align-items: center; justify-content: center; }
 
-        /* 交互组件 */
-        .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.95); padding: 20px; display: flex; justify-content: center; padding-bottom: calc(20px + env(safe-area-inset-bottom)); z-index: 100; }
-        .gen-btn { width: 85%; max-width: 300px; padding: 16px; background: #fff; color: #000; border-radius: 50px; font-weight: 900; letter-spacing: 0.25em; }
-        .ratio-tabs { position: fixed; top: 15px; display: flex; gap: 15px; background: rgba(255,255,255,0.05); padding: 5px 15px; border-radius: 40px; z-index: 100; }
-        .tab { font-size: 10px; color: #666; font-weight: bold; padding: 5px 10px; transition: 0.2s; }
-        .tab.active { color: #fff; background: rgba(255,255,255,0.1); border-radius: 20px; }
+        .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.95); padding: 20px; display: flex; justify-content: center; padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
+        .gen-btn { width: 85%; max-width: 300px; padding: 16px; background: #fff; color: #000; border-radius: 50px; font-weight: 900; letter-spacing: 0.25em; text-transform: uppercase; }
+        
+        .ratio-tabs { position: fixed; top: 15px; display: flex; gap: 15px; background: rgba(255,255,255,0.05); padding: 5px 15px; border-radius: 40px; }
+        .tab { font-size: 10px; color: #666; font-weight: bold; }
+        .tab.active { color: #fff; }
     </style>
 </head>
 <body>
 
-    <div class="ratio-tabs" id="tabs">
-        <button onclick="switchRatio('res-16-9', this)" class="tab active">16:9</button>
-        <button onclick="switchRatio('res-3-4', this)" class="tab">3:4</button>
-        <button onclick="switchRatio('res-1-1', this)" class="tab">1:1</button>
+    <div class="ratio-tabs">
+        <button onclick="setRatio('res-16-9', this)" class="tab active">16:9</button>
+        <button onclick="setRatio('res-3-4', this)" class="tab">3:4</button>
+        <button onclick="setRatio('res-1-1', this)" class="tab">1:1</button>
     </div>
 
     <div id="display-area">
@@ -53,11 +51,11 @@
         <img id="final-img" src="">
     </div>
 
-    <p class="text-gray-700 text-[10px] tracking-[0.4em] mt-8">↑ 长按卡片保存当前比例 ↑</p>
+    <p class="text-gray-700 text-[10px] tracking-[0.4em] mt-10">↑ 长按保存完整拍立得 ↑</p>
 
     <div id="render-source">
         <div id="capture-target" class="polaroid res-16-9">
-            <div class="photo-frame"><img id="source-img" src="" crossorigin="anonymous"></div>
+            <div class="photo-frame"><img id="source-img" src=""></div>
             <div class="quote-area">
                 <p id="target-zh" class="quote-zh"></p>
                 <p id="target-en" class="quote-en"></p>
@@ -67,82 +65,57 @@
     </div>
 
     <div class="nav-bar">
-        <button id="gen-btn" onclick="fetchNewMovie()" class="gen-btn active:scale-95 transition">
-            <span id="btn-text">下一张 NEXT</span>
-        </button>
+        <button id="gen-btn" onclick="generate()" class="gen-btn">下一张 NEXT</button>
     </div>
 
     <script>
-        let currentData = null; // 存储当前电影数据，防止切换比例时重复请求
-
-        // 仅切换比例，不请求后端
-        function switchRatio(ratioClass, btn) {
-            if (!currentData) return; 
-            
-            // 更新 UI 状态
+        let currentRatio = 'res-16-9';
+        function setRatio(r, btn) {
+            currentRatio = r;
+            document.getElementById('capture-target').className = `polaroid ${r}`;
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             btn.classList.add('active');
-            
-            // 改变渲染源比例并重新截图
-            document.getElementById('capture-target').className = `polaroid ${ratioClass}`;
-            renderCanvas();
+            generate();
         }
 
-        // 获取新内容
-        async function fetchNewMovie() {
+        async function generate() {
             const btn = document.getElementById('gen-btn');
-            const btnText = document.getElementById('btn-text');
             const finalImg = document.getElementById('final-img');
             const placeholder = document.getElementById('placeholder');
-            
             btn.disabled = true;
-            btnText.innerText = "DEVELOPING...";
+            btn.innerText = "DEVELOPING...";
             placeholder.style.display = 'flex';
             finalImg.style.display = 'none';
 
             try {
-                // 加上时间戳，彻底干掉缓存
-                const res = await fetch(`/api/generate?t=${Date.now()}`);
-                currentData = await res.json();
+                const res = await fetch('/api/generate');
+                const data = await res.json();
 
-                document.getElementById('target-zh').innerText = currentData.quote.zh;
-                document.getElementById('target-en').innerText = currentData.quote.en;
-                document.getElementById('target-meta').innerText = `— ${currentData.title} ${currentData.year ? '('+currentData.year+')' : ''}`;
+                document.getElementById('target-zh').innerText = data.quote.zh;
+                document.getElementById('target-en').innerText = data.quote.en;
+                document.getElementById('target-meta').innerText = `— ${data.title} ${data.year ? '('+data.year+')' : ''}`;
                 
                 const sourceImg = document.getElementById('source-img');
-                sourceImg.src = currentData.image;
+                sourceImg.src = data.image;
 
-                sourceImg.onload = () => renderCanvas();
-
+                sourceImg.onload = function() {
+                    html2canvas(document.getElementById('capture-target'), { 
+                        scale: 3, 
+                        backgroundColor: '#fdfdfd' 
+                    }).then(canvas => {
+                        finalImg.src = canvas.toDataURL('image/png');
+                        finalImg.style.display = 'block';
+                        placeholder.style.display = 'none';
+                        btn.disabled = false;
+                        btn.innerText = "下一张 NEXT";
+                    });
+                };
             } catch (err) {
-                console.error(err);
-                btnText.innerText = "TRY AGAIN";
                 btn.disabled = false;
+                btn.innerText = "TRY AGAIN";
             }
         }
-
-        // 核心渲染函数：把当前 DOM 转为图片
-        function renderCanvas() {
-            const target = document.getElementById('capture-target');
-            const finalImg = document.getElementById('final-img');
-            const placeholder = document.getElementById('placeholder');
-            const btn = document.getElementById('gen-btn');
-            const btnText = document.getElementById('btn-text');
-
-            html2canvas(target, { 
-                scale: 3, 
-                backgroundColor: '#fdfdfd',
-                useCORS: true 
-            }).then(canvas => {
-                finalImg.src = canvas.toDataURL('image/png');
-                finalImg.style.display = 'block';
-                placeholder.style.display = 'none';
-                btn.disabled = false;
-                btnText.innerText = "下一张 NEXT";
-            });
-        }
-
-        window.onload = fetchNewMovie;
+        window.onload = generate;
     </script>
 </body>
 </html>
