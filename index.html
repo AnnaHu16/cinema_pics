@@ -3,165 +3,192 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CineMood - 电影感生成器</title>
+    <title>CineMood AI - 拍立得版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;900&display=swap" rel="stylesheet">
     <style>
-        body { background: #0a0a0a; color: #fff; font-family: 'PingFang SC', sans-serif; }
+        body { background: #121212; color: #fff; font-family: 'Helvetica Neue', sans-serif; }
         
-        /* 画布容器 */
-        #movie-container {
-            position: relative;
+        /* 拍立得卡片主体 */
+        #polaroid-card {
+            background: #fdfdfd; /* 拍立得相纸白 */
+            padding: 20px 20px 60px 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
             margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.5s ease;
+        }
+
+        /* 图片容器：确保图片比例完整 */
+        .photo-frame {
+            width: 100%;
             background: #000;
             overflow: hidden;
-            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
         }
 
-        /* 尺寸比例 */
-        .res-16-9 { width: 100vw; max-width: 800px; aspect-ratio: 16 / 9; }
-        .res-1-1 { width: 90vw; max-width: 500px; aspect-ratio: 1 / 1; }
-        .res-3-4 { width: 85vw; max-width: 450px; aspect-ratio: 3 / 4; }
+        #movie-img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain; /* 核心：不裁切，按比例缩小 */
+        }
 
-        /* 复古字幕样式：90年代黄色加黑边 */
-        .film-subtitle {
+        /* 比例样式 */
+        .res-16-9 { width: 90vw; max-width: 600px; }
+        .res-16-9 .photo-frame { aspect-ratio: 16 / 9; }
+
+        .res-1-1 { width: 85vw; max-width: 450px; }
+        .res-1-1 .photo-frame { aspect-ratio: 1 / 1; }
+
+        .res-3-4 { width: 80vw; max-width: 400px; }
+        .res-3-4 .photo-frame { aspect-ratio: 3 / 4; }
+
+        /* 台词区域：拍立得留白感 */
+        .quote-area {
+            margin-top: 30px;
+            padding: 0 10px;
+            text-align: left;
+            color: #1a1a1a; /* 黑色油墨感 */
+        }
+
+        .quote-zh {
             font-family: 'Noto Serif SC', serif;
-            color: #f3ce13;
-            text-shadow: 
-                2px 2px 0 #000,
-                -1px -1px 0 #000,  
-                1px -1px 0 #000,
-                -1px 1px 0 #000,
-                1px 1px 0 #000;
+            font-size: 1.15rem;
             font-weight: 900;
-            letter-spacing: 0.02em;
+            line-height: 1.6;
+            margin-bottom: 8px;
+            letter-spacing: -0.02em;
         }
 
-        /* 颗粒滤镜 */
-        .noise::before {
-            content: "";
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: url('https://www.transparenttextures.com/patterns/stardust.png');
-            opacity: 0.12; pointer-events: none; z-index: 10;
+        .quote-en {
+            font-family: 'Georgia', serif;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #666;
+            line-height: 1.4;
         }
 
-        .btn-active { background: #f3ce13 !important; color: #000 !important; }
+        .movie-label {
+            position: absolute;
+            bottom: -45px;
+            right: 0;
+            font-size: 10px;
+            color: #999;
+            font-style: italic;
+        }
+
+        /* 加载动画 */
+        .loading-overlay {
+            position: absolute; inset: 0; background: rgba(0,0,0,0.8);
+            display: none; align-items: center; justify-content: center; z-index: 50;
+        }
     </style>
 </head>
-<body class="flex flex-col items-center min-h-screen pb-20">
+<body class="flex flex-col items-center py-10">
 
-    <details class="w-full max-w-xl bg-gray-900/50 p-4 mb-6">
-        <summary class="text-[10px] text-gray-500 cursor-pointer text-center uppercase tracking-widest">API Configuration (Click to edit)</summary>
-        <div class="mt-4">
-            <input type="password" id="api-key-input" onchange="saveKey()" placeholder="粘贴 TMDB Read Access Token" 
-                   class="w-full bg-black border border-gray-800 rounded px-3 py-2 text-xs text-yellow-500">
+    <details class="w-full max-w-md bg-white/5 rounded-lg mb-8 text-[10px] overflow-hidden">
+        <summary class="p-3 cursor-pointer text-gray-400 text-center tracking-widest uppercase">API Keys Setup (TMDB & OpenRouter)</summary>
+        <div class="p-4 space-y-3 bg-white/10">
+            <input type="password" id="tmdb-key" placeholder="TMDB Read Access Token" class="w-full bg-black/50 border border-white/20 p-2 rounded text-yellow-500">
+            <input type="password" id="or-key" placeholder="OpenRouter API Key" class="w-full bg-black/50 border border-white/20 p-2 rounded text-blue-400">
         </div>
     </details>
 
-    <div class="flex gap-2 mb-6">
-        <button onclick="changeRes('res-16-9', this)" class="res-btn btn-active px-3 py-1 border border-gray-700 text-[10px] rounded">16:9</button>
-        <button onclick="changeRes('res-1-1', this)" class="res-btn px-3 py-1 border border-gray-700 text-[10px] rounded">1:1</button>
-        <button onclick="changeRes('res-3-4', this)" class="res-btn px-3 py-1 border border-gray-700 text-[10px] rounded">3:4</button>
+    <div class="flex gap-4 mb-10">
+        <button onclick="setRes('res-16-9')" class="text-[10px] border-b border-gray-600 pb-1 hover:border-white">WIDE 16:9</button>
+        <button onclick="setRes('res-1-1')" class="text-[10px] border-b border-gray-600 pb-1 hover:border-white">SQUARE 1:1</button>
+        <button onclick="setRes('res-3-4')" class="text-[10px] border-b border-gray-600 pb-1 hover:border-white">PORTRAIT 3:4</button>
     </div>
 
-    <div id="movie-container" class="res-16-9 noise">
-        <img id="bg-img" src="https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&w=1200" 
-             class="w-full h-full object-cover brightness-75 contrast-125 sepia-[0.1]">
+    <div id="polaroid-card" class="res-16-9">
+        <div class="photo-frame">
+            <div id="loader" class="loading-overlay">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+            </div>
+            <img id="movie-img" src="" alt="">
+        </div>
         
-        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20"></div>
-
-        <div class="absolute bottom-[10%] w-full px-12 text-center z-20">
-            <p id="quote-zh" class="film-subtitle text-lg md:text-2xl mb-1"></p>
-            <p id="quote-en" class="film-subtitle text-[10px] md:text-xs opacity-90 uppercase italic tracking-tighter"></p>
-            <p id="movie-meta" class="text-[8px] text-white/30 mt-6 tracking-[0.5em] uppercase font-light"></p>
+        <div class="quote-area relative">
+            <p id="quote-zh" class="quote-zh">等待你的电影人生...</p>
+            <p id="quote-en" class="quote-en">Waiting for your cinematic moment.</p>
+            <p id="movie-meta" class="movie-label"></p>
         </div>
     </div>
 
-    <div class="fixed bottom-8 flex items-center gap-12 bg-black/60 backdrop-blur-md px-10 py-4 rounded-full border border-white/10">
-        <button onclick="fetchNewScene()" class="group text-center">
-            <div class="w-12 h-12 flex items-center justify-center rounded-full border border-yellow-500 group-active:scale-90 transition">
-                <svg width="20" height="20" fill="none" stroke="#f3ce13" stroke-width="2" viewBox="0 0 24 24"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
-            </div>
-            <span class="text-[9px] mt-1 block text-yellow-500 font-bold">NEXT</span>
-        </button>
-
-        <button onclick="download()" class="group text-center">
-            <div class="w-12 h-12 flex items-center justify-center rounded-full border border-gray-500 group-active:scale-90 transition">
-                <svg width="20" height="20" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
-            </div>
-            <span class="text-[9px] mt-1 block text-gray-400 font-bold">SAVE</span>
-        </button>
+    <div class="mt-12 flex gap-8">
+        <button onclick="generate()" class="px-8 py-3 bg-white text-black text-xs font-bold rounded-full hover:bg-yellow-400 transition">NEXT SHOT</button>
+        <button onclick="download()" class="px-8 py-3 border border-white text-xs font-bold rounded-full hover:bg-white hover:text-black transition">EXPORT</button>
     </div>
 
     <script>
-        // 1. 预设 Emo 台词库 (可无限扩展)
-        const quotes = [
-            { zh: "我甚至连他的一张照片都没有，他只活在我的记忆里。", en: "I don't even have a picture of him. He exists only in my memory." },
-            { zh: "所有的记忆都是潮湿的。", en: "All memories are traces of tears." },
-            { zh: "不如，我们重头来过。", en: "How about we start over." },
-            { zh: "有些事，一万年也不会改变。", en: "Some things will never change in ten thousand years." },
-            { zh: "我们最接近的时候，距离只有0.01公分。", en: "Our closest point of contact was just 0.01cm apart." },
-            { zh: "世界上有那么多城镇，她偏偏走进了我这一间。", en: "Of all the gin joints in all the towns in all the world, she walks into mine." },
-            { zh: "如果你不打算回来，就别让我等。", en: "If you're not coming back, don't make me wait." }
-        ];
-
-        // 2. 初始化 Key
-        window.onload = () => {
-            const savedKey = localStorage.getItem('tmdb_key');
-            if(savedKey) document.getElementById('api-key-input').value = savedKey;
-            fetchNewScene();
-        };
-
-        function saveKey() {
-            localStorage.setItem('tmdb_key', document.getElementById('api-key-input').value);
+        function setRes(res) {
+            document.getElementById('polaroid-card').className = res;
         }
 
-        // 3. 核心功能：随机抓取剧照并配对台词
-        async function fetchNewScene() {
-            const token = localStorage.getItem('tmdb_key');
-            if(!token) { alert("请先在设置中粘贴 API Token"); return; }
+        async function generate() {
+            const tmdbKey = document.getElementById('tmdb-key').value;
+            const orKey = document.getElementById('or-key').value;
+            if (!tmdbKey || !orKey) return alert("请在上方配置面板填写两个 API Key");
 
-            // 随机页码和类型 (18: Drama, 10749: Romance)
-            const genres = ['18', '10749', '9648'];
-            const randomGenre = genres[Math.floor(Math.random() * genres.length)];
-            const randomPage = Math.floor(Math.random() * 60) + 1;
+            document.getElementById('loader').style.display = 'flex';
 
             try {
-                const res = await fetch(`https://api.themoviedb.org/3/discover/movie?with_genres=${randomGenre}&page=${randomPage}&include_adult=false&sort_by=popularity.desc`, {
-                    headers: { Authorization: `Bearer ${token}` }
+                // 1. 从 TMDB 获取随机热门电影
+                const page = Math.floor(Math.random() * 20) + 1;
+                const tmdbRes = await fetch(`https://api.themoviedb.org/3/discover/movie?sort_by=popularity.desc&page=${page}&language=zh-CN`, {
+                    headers: { Authorization: `Bearer ${tmdbKey}` }
                 });
-                const data = await res.json();
-                const movie = data.results[Math.floor(Math.random() * data.results.length)];
+                const tmdbData = await tmdbRes.json();
+                const movie = tmdbData.results[Math.floor(Math.random() * tmdbData.results.length)];
+                
+                // 更新剧照
+                document.getElementById('movie-img').src = `https://image.tmdb.org/t/p/original${movie.backdrop_path}`;
+                document.getElementById('movie-meta').innerText = `— ${movie.title} (${movie.release_date.split('-')[0]})`;
 
-                // 更新视觉内容
-                document.getElementById('bg-img').src = `https://image.tmdb.org/t/p/original${movie.backdrop_path}`;
+                // 2. 从 OpenRouter 获取该电影的经典 Emo 台词
+                const aiRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${orKey}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        "model": "google/gemini-2.0-flash-001",
+                        "messages": [
+                            {
+                                "role": "user",
+                                "content": `你是一个文艺电影评论家。请给出电影《${movie.title}》中一句最经典、充满emo感或文艺哲理的台词。
+                                格式要求：只要输出json，格式为 {"zh": "中文台词", "en": "英文台词"}。不要有其他废话。`
+                            }
+                        ]
+                    })
+                });
+                const aiData = await aiRes.json();
+                const content = JSON.parse(aiData.choices[0].message.content.replace(/```json|```/g, ''));
                 
-                const q = quotes[Math.floor(Math.random() * quotes.length)];
-                document.getElementById('quote-zh').innerText = q.zh;
-                document.getElementById('quote-en').innerText = q.en;
-                document.getElementById('movie-meta').innerText = `${movie.title} • ${movie.release_date.split('-')[0]}`;
-                
-            } catch (e) {
-                console.error("Fetch error", e);
+                document.getElementById('quote-zh').innerText = content.zh;
+                document.getElementById('quote-en').innerText = content.en;
+
+            } catch (err) {
+                console.error(err);
+                alert("生成失败，请检查 API Key 或网络状况");
+            } finally {
+                document.getElementById('loader').style.display = 'none';
             }
         }
 
-        function changeRes(res, btn) {
-            document.getElementById('movie-container').className = `noise ${res}`;
-            document.querySelectorAll('.res-btn').forEach(b => b.classList.remove('btn-active'));
-            btn.classList.add('btn-active');
-        }
-
         function download() {
-            const area = document.getElementById('movie-container');
-            html2canvas(area, { 
-                useCORS: true,
-                scale: 2 // 提高清晰度
-            }).then(canvas => {
+            const card = document.getElementById('polaroid-card');
+            html2canvas(card, { scale: 3, useCORS: true, backgroundColor: '#121212' }).then(canvas => {
                 const link = document.createElement('a');
-                link.download = `CineMood-${Date.now()}.png`;
-                link.href = canvas.toDataURL('image/png');
+                link.download = `Cinema-Polaroid-${Date.now()}.png`;
+                link.href = canvas.toDataURL();
                 link.click();
             });
         }
