@@ -3,124 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>CineMood Pro - 电影图片生成器</title>
+    <title>CineMood Pro - 电影感图片生成器</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@900&display=swap" rel="stylesheet">
     <style>
         body { 
-            background: #0d0d0d; 
-            color: #fff; 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            overflow: hidden;
-            -webkit-tap-highlight-color: transparent;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-h-screen;
-            padding-bottom: 100px;
+            background: #0d0d0d; color: #fff; 
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            overflow-x: hidden;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            min-h-screen; padding-bottom: 120px;
         }
         
-        /* 展示区域：限制最大宽度，适配电脑 */
-        #stage {
-            width: 92vw;
-            max-width: 500px;
-            margin-top: 20px;
-            position: relative;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.8);
-            transition: transform 0.3s ease;
-        }
-
-        /* 生成好的拍立得图片 */
-        #final-island {
-            width: 100%;
-            height: auto;
-            display: none; /* 初始隐藏 */
+        #polaroid-card {
+            background: #fdfdfd; 
+            padding: 15px 15px 50px 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            margin: 0 auto;
+            width: 92vw; max-width: 500px;
+            display: flex; flex-direction: column;
             border-radius: 4px;
         }
 
-        /* 加载占位格 */
-        #placeholder {
-            width: 100%;
-            aspect-ratio: 3 / 4; /* 拍立得经典比例 */
-            background: #1a1a1a;
-            border: 1px solid #333;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 4px;
+        .photo-frame {
+            width: 100%; aspect-ratio: 3 / 4; /* 拍立得经典比例 */
+            background: #000; overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+            position: relative; border-radius: 2px;
         }
 
-        .loading-text {
-            font-size: 10px;
-            tracking-[0.3em];
-            color: #555;
-            text-transform: uppercase;
-        }
+        #movie-img { max-width: 100%; max-height: 100%; object-fit: contain; }
 
-        /* 底部导航栏 */
+        .quote-area { margin-top: 25px; padding: 0 5px; color: #1a1a1a; word-break: break-word; text-align: left; }
+        .quote-zh { 
+            font-family: 'Noto Serif SC', serif; 
+            font-size: 1.1rem; font-weight: 900; 
+            line-height: 1.5; margin-bottom: 8px; 
+        }
+        .quote-en { 
+            font-family: 'Georgia', serif; 
+            font-size: 0.65rem; text-transform: uppercase; 
+            letter-spacing: 0.08em; color: #777; line-height: 1.4;
+        }
+        .movie-label { font-size: 9px; color: #aaa; font-style: italic; margin-top: 18px; text-align: right; }
+
+        .loading-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.88); display: none; align-items: center; justify-content: center; z-index: 50; }
+
+        /* 底部导航 */
         .nav-bar {
-            position: fixed;
-            bottom: 0; left: 0; right: 0;
-            background: rgba(18, 18, 18, 0.98);
-            backdrop-filter: blur(15px);
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: rgba(18, 18, 18, 0.96); backdrop-filter: blur(15px);
             padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
-            display: flex;
-            justify-content: center;
-            border-top: 1px solid rgba(255,255,255,0.08);
-            z-index: 80;
+            display: flex; justify-content: center;
+            border-top: 1px solid rgba(255,255,255,0.08); z-index: 80;
         }
 
         .gen-btn {
-            width: 100%;
-            max-width: 300px;
-            padding: 15px;
-            background: #fff;
-            color: #000;
-            border-radius: 50px;
-            font-size: 12px;
-            font-weight: bold;
-            tracking-[0.2em];
-            text-transform: uppercase;
-            box-shadow: 0 5px 15px rgba(255,255,255,0.1);
-            transition: all 0.2s ease;
+            width: 100%; max-width: 300px; padding: 15px;
+            background: #fff; color: #000;
+            border-radius: 50px; font-size: 12px; font-weight: bold;
+            tracking-[0.2em]; text-transform: uppercase;
         }
-        .gen-btn:active { scale: 0.96; background: #eee; }
-        .gen-btn:disabled { background: #333; color: #555; box-shadow: none; }
+        .gen-btn:active { scale: 0.96; }
+        .gen-btn:disabled { background: #333; color: #555; }
 
-        /* 微信提示层 */
-        #wechat-tip {
-            position: fixed; top: 10px; right: 10px;
-            background: rgba(255,255,255,0.9);
-            color: #000;
-            padding: 8px 15px;
-            border-radius: 8px;
-            font-size: 11px;
-            display: none;
-            z-index: 100;
+        /* 保存/导出层 */
+        #export-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.95);
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 100; padding: 20px;
         }
+        #preview-img { max-width: 90vw; max-height: 80vh; object-fit: contain; box-shadow: 0 0 30px rgba(0,0,0,1); }
     </style>
 </head>
 <body onload="checkWechat()">
 
-    <div id="wechat-tip">↑ 长按图片保存至相册 ↑</div>
+    <div id="wechat-tip" class="fixed top-2 right-2 bg-white/90 text-black px-4 py-2 rounded-md text-[10px] hidden z-100">↑ 长按保存拍立得至相册 ↑</div>
 
-    <div class="text-gray-600 text-[10px] tracking-[0.3em] font-bold mb-6 mt-4">
-        POLAROID 3:4
-    </div>
+    <div class="text-gray-600 text-[10px] tracking-[0.3em] font-bold mb-6 mt-4">POLAROID 3:4</div>
 
-    <div id="stage">
-        <div id="placeholder">
-            <div class="text-center">
-                <div id="spinner" class="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-700 mx-auto mb-3" style="display:none;"></div>
-                <p id="status-text" class="loading-text">READY</p>
+    <div id="polaroid-card">
+        <div class="photo-frame">
+            <div id="loader" class="loading-overlay">
+                <div class="text-center">
+                    <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-white mx-auto mb-3"></div>
+                    <p class="text-[9px] mt-3 tracking-[0.3em] text-gray-400">DEVELOPING</p>
+                </div>
             </div>
+            <img id="movie-img" src="" alt="" crossorigin="anonymous">
         </div>
-        
-        <img id="final-island" src="" alt="长按保存" contenteditable="false">
+        <div class="quote-area相对">
+            <p id="quote-zh" class="quote-zh">每一个瞬间都是电影...</p>
+            <p id="quote-en" class="quote-en">Every moment is a scene.</p>
+            <p id="movie-meta" class="movie-label"></p>
+        </div>
     </div>
 
-    <p class="text-[10px] text-gray-700 mt-10 tracking-[0.2em]">© CINEMOOD AI</p>
+    <div id="export-overlay" onclick="this.style.display='none'">
+        <p class="text-gray-400 text-[10px] tracking-[0.3em] mb-6">↓ 长按图片保存至相册 ↓</p>
+        <img id="preview-img" src="" alt="长按保存" contenteditable="false">
+        <button class="mt-10 text-gray-600 text-xs border border-gray-800 px-8 py-2 rounded-full hover:border-gray-600 transition">点击空白处返回</button>
+    </div>
 
     <div class="nav-bar">
         <button id="gen-btn" onclick="generate()" class="gen-btnactive:scale-95 transition">
@@ -128,63 +111,86 @@
         </button>
     </div>
 
+    <canvas id="comp-canvas" style="display:none;"></canvas>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script>
         function checkWechat() {
             const ua = navigator.userAgent.toLowerCase();
             if (ua.match(/MicroMessenger/i) == "micromessenger") {
                 document.getElementById('wechat-tip').style.display = 'block';
-                // 3秒后自动隐藏提示
-                setTimeout(() => {
-                    document.getElementById('wechat-tip').style.display = 'none';
-                }, 4000);
+                setTimeout(() => { document.getElementById('wechat-tip').style.display = 'none'; }, 4000);
             }
         }
 
         async function generate() {
             const btn = document.getElementById('gen-btn');
             const btnText = document.getElementById('btn-text');
-            const placeholder = document.getElementById('placeholder');
-            const spinner = document.getElementById('spinner');
-            const statusText = document.getElementById('status-text');
-            const finalImg = document.getElementById('final-island');
+            const loader = document.getElementById('loader');
+            const movieImg = document.getElementById('movie-img');
 
-            // 状态：加载中
             btn.disabled = true;
             btnText.innerText = "DEVELOPING...";
-            placeholder.style.display = 'flex';
-            finalImg.style.display = 'none';
-            spinner.style.display = 'block';
-            statusText.innerText = "FILM DEVELOPING";
+            loader.style.display = 'flex';
 
             try {
-                // 调用后端合成接口
+                // 1. 调用后端接口获取电影台词和图片的 Base64 数据
                 const res = await fetch('/api/generate');
-                if (!res.ok) throw new Error("后端服务异常");
-                
-                // 后端返回的是合成好的 Base64 图片数据
+                if (!res.ok) throw new Error("后端接口错误");
                 const data = await res.json();
                 
-                if (data.image) {
-                    // 状态：完成
-                    finalImg.src = data.image;
-                    finalImg.style.display = 'block';
-                    placeholder.style.display = 'none';
-                    btnText.innerText = "NEXT SHOT";
-                } else {
-                    throw new Error("图片生成失败");
-                }
+                // 2. 将数据应用到拍立得格子
+                // data.image 现在是后端转好的 Base64 数据，完全避开了域名加载
+                movieImg.src = data.image; 
+                document.getElementById('quote-zh').innerText = data.quote.zh;
+                document.getElementById('quote-en').innerText = data.quote.en;
+                document.getElementById('movie-meta').innerText = `— ${data.title} (${data.year})`;
+                
+                // 3. 等待 Base64 图片在浏览器里完全加载后再进行 Canvas 合成
+                movieImg.onload = function() {
+                    combineAndShow();
+                };
 
             } catch (err) {
                 console.error(err);
-                statusText.innerText = "ERROR. TRY AGAIN.";
+                alert("电影感生成失败，请稍后再试。");
+                btn.disabled = false;
                 btnText.innerText = "TRY AGAIN";
             } finally {
-                btn.disabled = false;
-                spinner.style.display = 'none';
+                loader.style.display = 'none';
             }
         }
+
+        // 核心合成函数：点击 NEXT 后自动触发
+        function combineAndShow() {
+            const card = document.getElementById('polaroid-card');
+            const overlay = document.getElementById('export-overlay');
+            const previewImg = document.getElementById('preview-img');
+            const btn = document.getElementById('gen-btn');
+            const btnText = document.getElementById('btn-text');
+
+            // 使用 html2canvas 将整个拍立得区域合成图片
+            // 由于所有图片都是 Base64 数据， html2canvas 的 useCORS 这里设置不设置都无所谓
+            html2canvas(card, { 
+                scale: 3, // 提高清晰度
+                backgroundColor: '#fdfdfd',
+                logging: false,
+                allowTaint: false // 必须设置为 false 才能导出
+            }).then(canvas => {
+                // 将合成好的图片（图片+台词）作为 base64 放到预览层
+                previewImg.src = canvas.toDataURL('image/png');
+                overlay.style.display = 'flex'; // 自动弹出，引导长按保存
+                
+                btn.disabled = false;
+                btnText.innerText = "NEXT SHOT";
+            }).catch(err => {
+                console.error(err);
+                btn.disabled = false;
+                btnText.innerText = "TRY AGAIN";
+            });
+        }
         
-        // 首次加载自动生成一张
+        // 首次加载
         window.onload = function() {
             checkWechat();
             generate();
