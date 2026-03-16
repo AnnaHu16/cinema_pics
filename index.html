@@ -2,69 +2,113 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CineMood AI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>CineMood Pro - 电影图片生成器</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@900&display=swap" rel="stylesheet">
     <style>
-        body { background: #080808; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        body { background: #080808; color: #fff; font-family: -apple-system, BlinkMacSystemFont, sans-serif; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
         
-        /* 1. 隐藏原始 DOM，只用来作为截图源 */
+        /* 1. 隐藏渲染源 */
         #render-source { position: fixed; left: -9999px; top: 0; }
 
-        /* 2. 拍立得样式设计 */
+        /* 2. 拍立得容器样式 */
         .polaroid { 
-            background: #fdfdfd; padding: 15px 15px 45px 15px; width: 600px; /* 固定宽度渲染更清晰 */
+            background: #fdfdfd; padding: 15px 15px 45px 15px; width: 600px; /* 固定高清晰度渲染宽度 */
             display: flex; flex-direction: column; align-items: center;
+            border-radius: 2px;
         }
-        .photo-frame { width: 100%; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .photo-frame { width: 100%; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 1px; }
         .res-16-9 .photo-frame { aspect-ratio: 16 / 9; }
         .res-3-4 .photo-frame { aspect-ratio: 3 / 4; }
         .res-1-1 .photo-frame { aspect-ratio: 1 / 1; }
 
-        /* 3. 电影级字幕排版 */
+        #source-img { width: 100%; height: 100%; object-fit: contain; }
+
+        /* 3. 修改后的高级感黑色字幕排版 */
         .quote-area { margin-top: 35px; text-align: center; width: 100%; }
-        .quote-zh { 
-            color: #f1c40f; font-family: 'Noto Serif SC', serif; font-size: 28px; font-weight: 900;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8); margin-bottom: 10px; padding: 0 20px;
-        }
-        .quote-en { color: #888; font-size: 14px; text-transform: uppercase; letter-spacing: 0.1em; padding: 0 30px; }
-        .movie-meta { color: #aaa; font-size: 11px; margin-top: 30px; width: 100%; text-align: right; padding-right: 10px; font-style: italic; }
-
-        /* 4. 前端展示层 */
-        #display-area { width: 90vw; max-width: 450px; margin-top: 60px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
-        #final-img { width: 100%; height: auto; display: none; border-radius: 4px; }
-        #placeholder { width: 100%; aspect-ratio: 3/4; background: #111; display: flex; align-items: center; justify-content: center; border-radius: 4px; }
-
-        .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #000; padding: 20px; display: flex; justify-content: center; padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
-        .gen-btn { width: 80%; max-width: 300px; padding: 15px; background: #fff; color: #000; border-radius: 50px; font-weight: 900; letter-spacing: 0.2em; }
-        .gen-btn:disabled { background: #333; color: #555; }
         
-        .ratio-tabs { position: fixed; top: 20px; display: flex; gap: 15px; z-index: 100; }
-        .tab { font-size: 10px; color: #555; font-weight: bold; }
-        .tab.active { color: #fff; border-bottom: 2px solid #fff; }
+        /* 中文台词：修改为纯黑色 (#000000)，去掉了阴影，更素雅复古 */
+        .quote-zh { 
+            color: #000000; font-family: 'Noto Serif SC', serif; 
+            font-size: 28px; font-weight: 900;
+            line-height: 1.5; margin-bottom: 12px; padding: 0 25px;
+            word-wrap: break-word;
+        }
+        
+        /* 英文台词：保持深灰色大写，居中排版 */
+        .quote-en { 
+            color: #777777; font-family: 'Georgia', serif; font-size: 14px; 
+            text-transform: uppercase; letter-spacing: 0.1em; 
+            padding: 0 35px; line-height: 1.4;
+            word-wrap: break-word;
+        }
+        
+        /* 电影信息：灰色小字斜体靠右 */
+        .movie-meta { 
+            color: #aaaaaa; font-size: 11px; margin-top: 35px; 
+            width: 100%; text-align: right; padding-right: 15px; 
+            font-style: italic; font-weight: normal;
+        }
+
+        /* 4. 前端展示层（手机适配） */
+        #display-area { 
+            width: 90vw; max-width: 450px; margin-top: 60px; 
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+            border-radius: 4px; overflow: hidden;
+        }
+        #final-img { width: 100%; height: auto; display: none; }
+        
+        /* 加载占位格 */
+        #placeholder { width: 100%; aspect-ratio: 3/4; background: #111; display: flex; align-items: center; justify-content: center; }
+
+        /* 底部导航栏 */
+        .nav-bar { 
+            position: fixed; bottom: 0; left: 0; right: 0; 
+            background: rgba(0,0,0,0.95); backdrop-filter: blur(10px);
+            padding: 20px; display: flex; justify-content: center; 
+            padding-bottom: calc(20px + env(safe-area-inset-bottom));
+            z-index: 100;
+        }
+        .gen-btn { 
+            width: 85%; max-width: 300px; padding: 16px; 
+            background: #ffffff; color: #000000; border-radius: 50px; 
+            font-size: 12px; font-weight: 900; letter-spacing: 0.25em; 
+            text-transform: uppercase;
+        }
+        .gen-btn:disabled { background: #333333; color: #666666; }
+        
+        /* 比例切换页签 */
+        .ratio-tabs { position: fixed; top: 15px; display: flex; gap: 18px; z-index: 100; background: rgba(255,255,255,0.05); padding: 5px 15px; border-radius: 40px; }
+        .tab { font-size: 10px; color: #666666; font-weight: bold; letter-spacing: 0.1em; text-transform: uppercase; }
+        .tab.active { color: #ffffff; }
     </style>
 </head>
 <body>
 
     <div class="ratio-tabs">
-        <button onclick="setRatio('res-16-9', this)" class="tab active">16:9</button>
-        <button onclick="setRatio('res-3-4', this)" class="tab">3:4</button>
-        <button onclick="setRatio('res-1-1', this)" class="tab">1:1</button>
+        <button onclick="setRatio('res-16-9', this)" class="tab active">16:9 电影</button>
+        <button onclick="setRatio('res-3-4', this)" class="tab">3:4 小红书</button>
+        <button onclick="setRatio('res-1-1', this)" class="tab">1:1 朋友圈</button>
     </div>
+
+    <p class="text-gray-700 text-[10px] tracking-[0.4em] mt-16 mb-4">↑ 长按卡片保存完整拍立得 ↑</p>
 
     <div id="display-area">
-        <div id="placeholder"><p class="text-xs text-gray-700 tracking-widest">READY</p></div>
-        <img id="final-img" src="">
+        <div id="placeholder">
+            <div class="text-center">
+                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-600 mx-auto mb-3"></div>
+                <p class="text-[9px] tracking-[0.3em] text-gray-700">FILM LOADING</p>
+            </div>
+        </div>
+        <img id="final-img" src="" alt="长按保存拍立得卡片">
     </div>
-
-    <p class="text-[10px] text-gray-600 mt-6 tracking-[0.3em]">↑ 长按保存完整拍立得 ↑</p>
 
     <div id="render-source">
         <div id="capture-target" class="polaroid res-16-9">
             <div class="photo-frame"><img id="source-img" src=""></div>
-            <div class="quote-area">
+            <div class="quote-area relative">
                 <p id="target-zh" class="quote-zh"></p>
                 <p id="target-en" class="quote-en"></p>
                 <p id="target-meta" class="movie-meta"></p>
@@ -73,62 +117,105 @@
     </div>
 
     <div class="nav-bar">
-        <button id="gen-btn" onclick="generate()" class="gen-btn">下一张 NEXT</button>
+        <button id="gen-btn" onclick="generate()" class="gen-btnactive:scale-95 transition">
+            <span id="btn-text">下一张 NEXT</span>
+        </button>
     </div>
 
     <script>
+        // 初始比例
         let currentRatio = 'res-16-9';
 
         function setRatio(r, btn) {
             currentRatio = r;
+            // 改变隐藏源的比例
             document.getElementById('capture-target').className = `polaroid ${r}`;
+            
+            // 更新按钮状态
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             btn.classList.add('active');
+            
+            // 切换比例后自动点击一次下一张，以生成新的正确比例图片
             generate();
         }
 
         async function generate() {
             const btn = document.getElementById('gen-btn');
+            const btnText = document.getElementById('btn-text');
             const finalImg = document.getElementById('final-img');
             const placeholder = document.getElementById('placeholder');
+            const sourceImg = document.getElementById('source-img');
             
+            // 状态：加载中
             btn.disabled = true;
-            btn.innerText = "生成中...";
+            btnText.innerText = " DEVELOPING...";
             placeholder.style.display = 'flex';
             finalImg.style.display = 'none';
 
             try {
+                // 1. 调用后端代理获取数据 (图片已转为 Base64)
                 const res = await fetch('/api/generate');
+                if (!res.ok) throw new Error("API ERROR");
                 const data = await res.json();
 
-                // 1. 填充隐藏的 DOM
-                const sourceImg = document.getElementById('source-img');
+                // 2. 填充隐藏的 DOM (Canvas 源)，加防崩溃防御
+                // 如果数据缺失，给一个空字符串或兜底文字，绝不显示 undefined
+                document.getElementById('target-zh').innerText = data.quote.zh || "";
+                document.getElementById('target-en').innerText = data.quote.en || "";
+                
+                const safeTitle = data.title || "未知电影";
+                const safeYear = data.year ? `(${data.year})` : "";
+                document.getElementById('target-meta').innerText = `— ${safeTitle} ${safeYear}`;
+                
+                // 加载数据图片到隐藏源
                 sourceImg.src = data.image;
-                document.getElementById('target-zh').innerText = data.quote.zh;
-                document.getElementById('target-en').innerText = data.quote.en;
-                document.getElementById('target-meta').innerText = `— ${data.title} (${data.year})`;
 
-                // 2. 等待图片加载后截图
-                sourceImg.onload = async () => {
-                    const canvas = await html2canvas(document.getElementById('capture-target'), {
-                        scale: 2,
-                        useCORS: true,
-                        backgroundColor: '#fdfdfd'
-                    });
-                    
-                    // 3. 将截图转为 Base64 显示在主屏幕
-                    finalImg.src = canvas.toDataURL("image/png");
-                    finalImg.style.display = 'block';
-                    placeholder.style.display = 'none';
-                    btn.disabled = false;
-                    btn.innerText = "下一张 NEXT";
+                // 3. 等待 Base64 图片在浏览器里完全加载后再进行合成
+                sourceImg.onload = function() {
+                    combineAndShow();
                 };
-            } catch (e) {
-                btn.innerText = "TRY AGAIN";
+
+            } catch (err) {
+                console.error(err);
+                btnText.innerText = "TRY AGAIN";
                 btn.disabled = false;
+                placeholder.style.display = 'none'; // 即使失败也不要一直卡在Loading
+                finalImg.style.display = 'block'; // 显示默认文字区域（可自行加一张报错占位图）
+                alert("生成失败，可能是网络原因，请稍后再试。");
             }
         }
 
+        // 核心合成函数：将 html 区域截取为 PNG
+        function combineAndShow() {
+            const target = document.getElementById('capture-target');
+            const finalImg = document.getElementById('final-img');
+            const placeholder = document.getElementById('placeholder');
+            const btn = document.getElementById('gen-btn');
+            const btnText = document.getElementById('btn-text');
+
+            // html2canvas 将整个拍立得区域合成单张图片
+            html2canvas(target, { 
+                scale: 3, // 提高清晰度
+                backgroundColor: '#fdfdfd', // 显式设置底色，防止背景变成透明
+                logging: false,
+                useCORS: true // 这里使用 CORS，但由于后端代理了 Base64，它主要作为一种安全模式开启
+            }).then(canvas => {
+                // 将合成好的、包含所有内容的图片数据放到展示层
+                finalImg.src = canvas.toDataURL('image/png');
+                finalImg.style.display = 'block';
+                placeholder.style.display = 'none';
+                
+                // 状态：完成
+                btn.disabled = false;
+                btnText.innerText = "下一张 NEXT";
+            }).catch(err => {
+                console.error("Canvas合成失败:", err);
+                btn.disabled = false;
+                btnText.innerText = "TRY AGAIN";
+            });
+        }
+        
+        // 首次加载
         window.onload = generate;
     </script>
 </body>
