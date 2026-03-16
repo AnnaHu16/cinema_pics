@@ -2,22 +2,31 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CineMood Pro- 电影图片生成器</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CineMood AI - 手机电影感版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;900&display=swap" rel="stylesheet">
     <style>
-        body { background: #121212; color: #fff; font-family: 'Helvetica Neue', sans-serif; }
+        body { 
+            background: #000; 
+            color: #fff; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            overflow-x: hidden;
+        }
+        
+        /* 容器适配：手机端全屏感 */
         #polaroid-card {
             background: #fdfdfd; 
-            padding: 20px 20px 60px 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+            padding: 15px 15px 50px 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             margin: 0 auto;
+            width: 92vw; /* 手机端宽度占 92% */
             display: flex;
             flex-direction: column;
-            transition: all 0.5s ease;
+            transition: transform 0.3s ease;
         }
+
         .photo-frame {
             width: 100%;
             background: #000;
@@ -27,56 +36,121 @@
             justify-content: center;
             position: relative;
         }
-        #movie-img { max-width: 100%; max-height: 100%; object-fit: contain; }
-        .res-16-9 { width: 90vw; max-width: 600px; }
+
+        /* 比例控制：手机端 16:9 默认最美 */
         .res-16-9 .photo-frame { aspect-ratio: 16 / 9; }
-        .res-1-1 { width: 85vw; max-width: 450px; }
         .res-1-1 .photo-frame { aspect-ratio: 1 / 1; }
-        .res-3-4 { width: 80vw; max-width: 400px; }
         .res-3-4 .photo-frame { aspect-ratio: 3 / 4; }
-        .quote-area { margin-top: 30px; padding: 0 10px; color: #1a1a1a; }
-        .quote-zh { font-family: 'Noto Serif SC', serif; font-size: 1.25rem; font-weight: 900; line-height: 1.6; margin-bottom: 8px; }
-        .quote-en { font-family: 'Georgia', serif; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: #666; }
-        .movie-label { position: absolute; bottom: -45px; right: 0; font-size: 10px; color: #999; font-style: italic; }
-        .loading-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.8); display: none; align-items: center; justify-content: center; z-index: 50; }
+
+        #movie-img { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+        .quote-area { margin-top: 25px; padding: 0 5px; color: #1a1a1a; word-break: break-all; }
+        
+        /* 针对手机调小字号 */
+        .quote-zh { 
+            font-family: 'Noto Serif SC', serif; 
+            font-size: 1.1rem; 
+            font-weight: 900; 
+            line-height: 1.5; 
+            margin-bottom: 6px; 
+        }
+        .quote-en { 
+            font-family: 'Georgia', serif; 
+            font-size: 0.65rem; 
+            text-transform: uppercase; 
+            letter-spacing: 0.05em; 
+            color: #777; 
+            line-height: 1.3;
+        }
+        .movie-label { font-size: 9px; color: #aaa; font-style: italic; margin-top: 15px; text-align: right; }
+
+        .loading-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 50; }
+
+        /* 底部导航栏：适配手机手势 */
+        .nav-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(18, 18, 18, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 15px 20px calc(15px + env(safe-area-inset-bottom));
+            display: flex;
+            justify-content: space-around;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* 导出后的预览图层：长按保存的关键 */
+        #export-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.9);
+            display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 100;
+            padding: 20px;
+        }
+        #preview-img { max-width: 100%; box-shadow: 0 0 20px rgba(0,0,0,1); }
     </style>
 </head>
-<body class="flex flex-col items-center py-10">
-    <div class="flex gap-4 mb-10">
-        <button onclick="setRes('res-16-9')" class="text-[10px] border-b border-gray-600 pb-1">WIDE 16:9</button>
-        <button onclick="setRes('res-1-1')" class="text-[10px] border-b border-gray-600 pb-1">SQUARE 1:1</button>
-        <button onclick="setRes('res-3-4')" class="text-[10px] border-b border-gray-600 pb-1">PORTRAIT 3:4</button>
+<body class="flex flex-col items-center pt-8 pb-32">
+
+    <div class="flex gap-6 mb-8 text-gray-400">
+        <button onclick="setRes('res-16-9')" class="text-[11px] tracking-widest font-bold">16:9</button>
+        <button onclick="setRes('res-1-1')" class="text-[11px] tracking-widest font-bold">1:1</button>
+        <button onclick="setRes('res-3-4')" class="text-[11px] tracking-widest font-bold">3:4</button>
     </div>
 
     <div id="polaroid-card" class="res-16-9">
         <div class="photo-frame">
-            <div id="loader" class="loading-overlay"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div></div>
-            <img id="movie-img" src="" alt="">
+            <div id="loader" class="loading-overlay">
+                <div class="text-center">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto"></div>
+                    <p class="text-[10px] mt-2 tracking-widest">FILM LOADING...</p>
+                </div>
+            </div>
+            <img id="movie-img" src="" alt="" crossorigin="anonymous">
         </div>
         <div class="quote-area relative">
-            <p id="quote-zh" class="quote-zh">每一个瞬间都是电影...</p>
-            <p id="quote-en" class="quote-en">Every moment is a scene.</p>
+            <p id="quote-zh" class="quote-zh">所有的记忆都是潮湿的。</p>
+            <p id="quote-en" class="quote-en">All memories are traces of tears.</p>
             <p id="movie-meta" class="movie-label"></p>
         </div>
     </div>
 
-    <div class="mt-12 flex gap-8">
-        <button onclick="generate()" class="px-8 py-3 bg-white text-black text-xs font-bold rounded-full hover:bg-yellow-400">NEXT SHOT</button>
-        <button onclick="download()" class="px-8 py-3 border border-white text-xs font-bold rounded-full">EXPORT</button>
+    <div id="export-overlay" onclick="this.style.display='none'">
+        <p class="text-white text-xs mb-4">↑ 长按图片保存到相册 ↑</p>
+        <img id="preview-img" src="" alt="">
+        <button class="mt-8 text-gray-400 text-xs border border-gray-700 px-6 py-2 rounded-full">点击空白处返回</button>
+    </div>
+
+    <div class="nav-bar">
+        <button onclick="generate()" class="flex flex-col items-center">
+            <div class="w-12 h-12 flex items-center justify-center rounded-full bg-yellow-500 text-black shadow-lg shadow-yellow-500/20 active:scale-90 transition">
+                <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+            </div>
+            <span class="text-[9px] mt-1 font-bold text-gray-400">NEXT</span>
+        </button>
+        
+        <button onclick="exportImage()" class="flex flex-col items-center">
+            <div class="w-12 h-12 flex items-center justify-center rounded-full border border-gray-600 active:scale-90 transition">
+                <svg width="22" height="22" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+            </div>
+            <span class="text-[9px] mt-1 font-bold text-gray-400">SHARE</span>
+        </button>
     </div>
 
     <script>
-        function setRes(res) { document.getElementById('polaroid-card').className = res; }
+        function setRes(res) {
+            document.getElementById('polaroid-card').className = res;
+        }
 
         async function generate() {
             document.getElementById('loader').style.display = 'flex';
             try {
-                // 1. 调用后端代理获取电影及台词
                 const res = await fetch('/api/generate');
                 const data = await res.json();
                 
-                // 2. 更新界面
-                document.getElementById('movie-img').src = data.image;
+                // 解决图片跨域
+                const img = document.getElementById('movie-img');
+                img.src = data.image + "?t=" + new Date().getTime(); // 加随机后缀强制刷新缓存
+                
                 document.getElementById('quote-zh').innerText = data.quote.zh;
                 document.getElementById('quote-en').innerText = data.quote.en;
                 document.getElementById('movie-meta').innerText = `— ${data.title} (${data.year})`;
@@ -87,15 +161,25 @@
             }
         }
 
-        function download() {
+        function exportImage() {
             const card = document.getElementById('polaroid-card');
-            html2canvas(card, { scale: 3, useCORS: true, backgroundColor: '#121212' }).then(canvas => {
-                const link = document.createElement('a');
-                link.download = `CineMood-${Date.now()}.png`;
-                link.href = canvas.toDataURL();
-                link.click();
+            const overlay = document.getElementById('export-overlay');
+            const previewImg = document.getElementById('preview-img');
+
+            // 手机端导出逻辑：生成 base64 图片并显示，引导长按保存
+            html2canvas(card, { 
+                scale: 3, 
+                useCORS: true, 
+                backgroundColor: '#fdfdfd',
+                logging: false
+            }).then(canvas => {
+                previewImg.src = canvas.toDataURL('image/png');
+                overlay.style.display = 'flex';
             });
         }
+        
+        // 首次加载
+        window.onload = generate;
     </script>
 </body>
 </html>
