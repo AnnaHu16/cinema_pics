@@ -3,156 +3,168 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CineMood Pro - 电影氛围感生成器</title>
+    <title>CineMood - 电影感生成器</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@900&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --film-yellow: #f1c40f;
-        }
-        body {
-            background-color: #0a0a0a;
-            color: #d1d1d1;
-            font-family: 'system-ui', sans-serif;
-        }
-        /* 核心画布样式 */
-        #capture-area {
-            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            background: #000;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
-            margin: 0 auto;
-        }
-        /* 比例定义 */
-        .ratio-16-9 { width: 100%; aspect-ratio: 16 / 9; }
-        .ratio-pyq { width: 80%; aspect-ratio: 1 / 1; } /* 朋友圈1:1 */
-        .ratio-xhs { width: 75%; aspect-ratio: 3 / 4; } /* 小红书3:4 */
-
-        /* 欧美90年代胶片滤镜 */
-        .vintage-grain {
-            filter: sepia(0.15) contrast(1.1) brightness(0.95);
-        }
-        .vintage-grain::after {
-            content: "";
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background-image: url('https://www.transparenttextures.com/patterns/stardust.png'); /* 模拟颗粒 */
-            opacity: 0.2;
-            pointer-events: none;
-        }
-
-        /* 经典译制片字体样式 */
-        .movie-subtitle {
-            font-family: 'Noto Serif SC', serif;
-            color: var(--film-yellow);
-            text-shadow: 2px 2px 0px #000, -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000;
-            letter-spacing: 0.05em;
-            line-height: 1.4;
-        }
+        body { background: #0a0a0a; color: #fff; font-family: 'PingFang SC', sans-serif; }
         
-        button.active {
-            background: #f1c40f !important;
-            color: #000 !important;
-            border-color: #f1c40f !important;
+        /* 画布容器 */
+        #movie-container {
+            position: relative;
+            margin: 0 auto;
+            background: #000;
+            overflow: hidden;
+            transition: all 0.3s ease;
         }
+
+        /* 尺寸比例 */
+        .res-16-9 { width: 100vw; max-width: 800px; aspect-ratio: 16 / 9; }
+        .res-1-1 { width: 90vw; max-width: 500px; aspect-ratio: 1 / 1; }
+        .res-3-4 { width: 85vw; max-width: 450px; aspect-ratio: 3 / 4; }
+
+        /* 复古字幕样式：90年代黄色加黑边 */
+        .film-subtitle {
+            font-family: 'Noto Serif SC', serif;
+            color: #f3ce13;
+            text-shadow: 
+                2px 2px 0 #000,
+                -1px -1px 0 #000,  
+                1px -1px 0 #000,
+                -1px 1px 0 #000,
+                1px 1px 0 #000;
+            font-weight: 900;
+            letter-spacing: 0.02em;
+        }
+
+        /* 颗粒滤镜 */
+        .noise::before {
+            content: "";
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: url('https://www.transparenttextures.com/patterns/stardust.png');
+            opacity: 0.12; pointer-events: none; z-index: 10;
+        }
+
+        .btn-active { background: #f3ce13 !important; color: #000 !important; }
     </style>
 </head>
-<body class="flex flex-col items-center py-10 px-4">
+<body class="flex flex-col items-center min-h-screen pb-20">
 
-    <header class="text-center mb-8">
-        <h1 class="text-2xl font-black tracking-tighter text-white">CINEMOOD <span class="text-yellow-500 italic">VINTAGE</span></h1>
-        <p class="text-[10px] text-gray-500 tracking-[0.3em] uppercase mt-1">90s Film Grain Aesthetic</p>
-    </header>
+    <details class="w-full max-w-xl bg-gray-900/50 p-4 mb-6">
+        <summary class="text-[10px] text-gray-500 cursor-pointer text-center uppercase tracking-widest">API Configuration (Click to edit)</summary>
+        <div class="mt-4">
+            <input type="password" id="api-key-input" onchange="saveKey()" placeholder="粘贴 TMDB Read Access Token" 
+                   class="w-full bg-black border border-gray-800 rounded px-3 py-2 text-xs text-yellow-500">
+        </div>
+    </details>
 
     <div class="flex gap-2 mb-6">
-        <button onclick="setRatio('ratio-16-9', this)" class="ratio-btn active px-3 py-1 border border-gray-700 text-[10px] rounded">16:9 宽屏</button>
-        <button onclick="setRatio('ratio-pyq', this)" class="ratio-btn px-3 py-1 border border-gray-700 text-[10px] rounded">朋友圈 1:1</button>
-        <button onclick="setRatio('ratio-xhs', this)" class="ratio-btn px-3 py-1 border border-gray-700 text-[10px] rounded">小红书 3:4</button>
+        <button onclick="changeRes('res-16-9', this)" class="res-btn btn-active px-3 py-1 border border-gray-700 text-[10px] rounded">16:9</button>
+        <button onclick="changeRes('res-1-1', this)" class="res-btn px-3 py-1 border border-gray-700 text-[10px] rounded">1:1</button>
+        <button onclick="changeRes('res-3-4', this)" class="res-btn px-3 py-1 border border-gray-700 text-[10px] rounded">3:4</button>
     </div>
 
-    <div class="flex flex-wrap justify-center gap-3 mb-8 max-w-md">
-        <button onclick="changeCategory('lonely', this)" class="cat-btn px-4 py-1 bg-transparent border border-gray-600 rounded-full text-xs hover:border-yellow-500 transition">孤独患者</button>
-        <button onclick="changeCategory('romance', this)" class="cat-btn px-4 py-1 bg-transparent border border-gray-600 rounded-full text-xs hover:border-yellow-500 transition">烈性爱情</button>
-        <button onclick="changeCategory('nihilism', this)" class="cat-btn px-4 py-1 bg-transparent border border-gray-600 rounded-full text-xs hover:border-yellow-500 transition">虚无主义</button>
-        <button onclick="changeCategory('growth', this)" class="cat-btn px-4 py-1 bg-transparent border border-gray-600 rounded-full text-xs hover:border-yellow-500 transition">人生成长</button>
-    </div>
-
-    <div id="capture-area" class="ratio-16-9 vintage-grain">
-        <img id="movie-img" src="" class="w-full h-full object-cover">
-        <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+    <div id="movie-container" class="res-16-9 noise">
+        <img id="bg-img" src="https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&w=1200" 
+             class="w-full h-full object-cover brightness-75 contrast-125 sepia-[0.1]">
         
-        <div class="absolute bottom-[10%] w-full px-8 text-center">
-            <p id="movie-quote" class="movie-subtitle text-xl md:text-3xl font-bold"></p>
-            <p id="movie-title" class="text-[10px] text-white/50 mt-4 tracking-widest uppercase"></p>
+        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20"></div>
+
+        <div class="absolute bottom-[10%] w-full px-12 text-center z-20">
+            <p id="quote-zh" class="film-subtitle text-lg md:text-2xl mb-1"></p>
+            <p id="quote-en" class="film-subtitle text-[10px] md:text-xs opacity-90 uppercase italic tracking-tighter"></p>
+            <p id="movie-meta" class="text-[8px] text-white/30 mt-6 tracking-[0.5em] uppercase font-light"></p>
         </div>
     </div>
 
-    <div class="mt-12 flex items-center gap-8">
-        <button onclick="renderNew()" class="flex flex-col items-center group">
-            <div class="w-16 h-16 rounded-full border-2 border-yellow-500 flex items-center justify-center group-active:scale-90 transition">
-                <svg xmlns="http://www.w3.org/2000/svg" class="text-yellow-500" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+    <div class="fixed bottom-8 flex items-center gap-12 bg-black/60 backdrop-blur-md px-10 py-4 rounded-full border border-white/10">
+        <button onclick="fetchNewScene()" class="group text-center">
+            <div class="w-12 h-12 flex items-center justify-center rounded-full border border-yellow-500 group-active:scale-90 transition">
+                <svg width="20" height="20" fill="none" stroke="#f3ce13" stroke-width="2" viewBox="0 0 24 24"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
             </div>
-            <span class="text-[10px] mt-2 text-yellow-500 font-bold">NEXT SHOT</span>
+            <span class="text-[9px] mt-1 block text-yellow-500 font-bold">NEXT</span>
+        </button>
+
+        <button onclick="download()" class="group text-center">
+            <div class="w-12 h-12 flex items-center justify-center rounded-full border border-gray-500 group-active:scale-90 transition">
+                <svg width="20" height="20" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+            </div>
+            <span class="text-[9px] mt-1 block text-gray-400 font-bold">SAVE</span>
         </button>
     </div>
 
     <script>
-        // 扩展数据库：这里你可以自行添加更多图片URL和台词
-        const db = {
-            lonely: [
-                { quote: "I think we are just lonely people trying to find someone to be lonely with.", title: "《Detachment》超脱", img: "https://images.unsplash.com/photo-1478720568477-152d9b164e26?auto=format&fit=crop&q=80&w=1200" },
-                { quote: "I am a part of all that I have met.", title: "《The Sea Inside》深海入眠", img: "https://images.unsplash.com/photo-1509248961158-e54f6934749c?auto=format&fit=crop&q=80&w=1200" }
-            ],
-            romance: [
-                { quote: "We'll always have Paris.", title: "《Casablanca》卡萨布兰卡", img: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&q=80&w=1200" },
-                { quote: "Only if you're lonely.", title: "《Before Sunrise》爱在黎明破晓前", img: "https://images.unsplash.com/photo-1512106335121-62935bdf4d46?auto=format&fit=crop&q=80&w=1200" }
-            ],
-            nihilism: [
-                { quote: "The things you own end up owning you.", title: "《Fight Club》搏击俱乐部", img: "https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&q=80&w=1200" },
-                { quote: "It's only after we've lost everything that we're free to do anything.", title: "《Fight Club》", img: "https://images.unsplash.com/photo-1535016120720-40c646bebbbb?auto=format&fit=crop&q=80&w=1200" }
-            ],
-            growth: [
-                { quote: "Keep looking up, that's the secret of life.", title: "《Snoopy》", img: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&q=80&w=1200" }
-            ]
-        };
+        // 1. 预设 Emo 台词库 (可无限扩展)
+        const quotes = [
+            { zh: "我甚至连他的一张照片都没有，他只活在我的记忆里。", en: "I don't even have a picture of him. He exists only in my memory." },
+            { zh: "所有的记忆都是潮湿的。", en: "All memories are traces of tears." },
+            { zh: "不如，我们重头来过。", en: "How about we start over." },
+            { zh: "有些事，一万年也不会改变。", en: "Some things will never change in ten thousand years." },
+            { zh: "我们最接近的时候，距离只有0.01公分。", en: "Our closest point of contact was just 0.01cm apart." },
+            { zh: "世界上有那么多城镇，她偏偏走进了我这一间。", en: "Of all the gin joints in all the towns in all the world, she walks into mine." },
+            { zh: "如果你不打算回来，就别让我等。", en: "If you're not coming back, don't make me wait." }
+        ];
 
-        let currentCat = 'lonely';
-
-        function setRatio(ratioClass, btn) {
-            const area = document.getElementById('capture-area');
-            area.className = `vintage-grain ${ratioClass}`;
-            document.querySelectorAll('.ratio-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-        }
-
-        function changeCategory(cat, btn) {
-            currentCat = cat;
-            document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            renderNew();
-        }
-
-        function renderNew() {
-            const items = db[currentCat];
-            const item = items[Math.floor(Math.random() * items.length)];
-            
-            // 动画效果
-            const area = document.getElementById('capture-area');
-            area.style.opacity = 0;
-            
-            setTimeout(() => {
-                document.getElementById('movie-img').src = item.img;
-                document.getElementById('movie-quote').innerText = item.quote;
-                document.getElementById('movie-title').innerText = item.title;
-                area.style.opacity = 1;
-            }, 300);
-        }
-
-        // 默认初始化第一个标签
+        // 2. 初始化 Key
         window.onload = () => {
-            document.querySelector('.cat-btn').click();
-            document.querySelector('.ratio-btn').click();
+            const savedKey = localStorage.getItem('tmdb_key');
+            if(savedKey) document.getElementById('api-key-input').value = savedKey;
+            fetchNewScene();
         };
+
+        function saveKey() {
+            localStorage.setItem('tmdb_key', document.getElementById('api-key-input').value);
+        }
+
+        // 3. 核心功能：随机抓取剧照并配对台词
+        async function fetchNewScene() {
+            const token = localStorage.getItem('tmdb_key');
+            if(!token) { alert("请先在设置中粘贴 API Token"); return; }
+
+            // 随机页码和类型 (18: Drama, 10749: Romance)
+            const genres = ['18', '10749', '9648'];
+            const randomGenre = genres[Math.floor(Math.random() * genres.length)];
+            const randomPage = Math.floor(Math.random() * 60) + 1;
+
+            try {
+                const res = await fetch(`https://api.themoviedb.org/3/discover/movie?with_genres=${randomGenre}&page=${randomPage}&include_adult=false&sort_by=popularity.desc`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const data = await res.json();
+                const movie = data.results[Math.floor(Math.random() * data.results.length)];
+
+                // 更新视觉内容
+                document.getElementById('bg-img').src = `https://image.tmdb.org/t/p/original${movie.backdrop_path}`;
+                
+                const q = quotes[Math.floor(Math.random() * quotes.length)];
+                document.getElementById('quote-zh').innerText = q.zh;
+                document.getElementById('quote-en').innerText = q.en;
+                document.getElementById('movie-meta').innerText = `${movie.title} • ${movie.release_date.split('-')[0]}`;
+                
+            } catch (e) {
+                console.error("Fetch error", e);
+            }
+        }
+
+        function changeRes(res, btn) {
+            document.getElementById('movie-container').className = `noise ${res}`;
+            document.querySelectorAll('.res-btn').forEach(b => b.classList.remove('btn-active'));
+            btn.classList.add('btn-active');
+        }
+
+        function download() {
+            const area = document.getElementById('movie-container');
+            html2canvas(area, { 
+                useCORS: true,
+                scale: 2 // 提高清晰度
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `CineMood-${Date.now()}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+        }
     </script>
 </body>
 </html>
