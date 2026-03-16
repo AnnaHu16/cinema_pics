@@ -3,16 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CineMood AI - 拍立得版</title>
+    <title>CineMood Pro- 电影图片生成器</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;900&display=swap" rel="stylesheet">
     <style>
         body { background: #121212; color: #fff; font-family: 'Helvetica Neue', sans-serif; }
-        
-        /* 拍立得卡片主体 */
         #polaroid-card {
-            background: #fdfdfd; /* 拍立得相纸白 */
+            background: #fdfdfd; 
             padding: 20px 20px 60px 20px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.6);
             margin: 0 auto;
@@ -20,8 +18,6 @@
             flex-direction: column;
             transition: all 0.5s ease;
         }
-
-        /* 图片容器：确保图片比例完整 */
         .photo-frame {
             width: 100%;
             background: #000;
@@ -31,153 +27,61 @@
             justify-content: center;
             position: relative;
         }
-
-        #movie-img {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain; /* 核心：不裁切，按比例缩小 */
-        }
-
-        /* 比例样式 */
+        #movie-img { max-width: 100%; max-height: 100%; object-fit: contain; }
         .res-16-9 { width: 90vw; max-width: 600px; }
         .res-16-9 .photo-frame { aspect-ratio: 16 / 9; }
-
         .res-1-1 { width: 85vw; max-width: 450px; }
         .res-1-1 .photo-frame { aspect-ratio: 1 / 1; }
-
         .res-3-4 { width: 80vw; max-width: 400px; }
         .res-3-4 .photo-frame { aspect-ratio: 3 / 4; }
-
-        /* 台词区域：拍立得留白感 */
-        .quote-area {
-            margin-top: 30px;
-            padding: 0 10px;
-            text-align: left;
-            color: #1a1a1a; /* 黑色油墨感 */
-        }
-
-        .quote-zh {
-            font-family: 'Noto Serif SC', serif;
-            font-size: 1.15rem;
-            font-weight: 900;
-            line-height: 1.6;
-            margin-bottom: 8px;
-            letter-spacing: -0.02em;
-        }
-
-        .quote-en {
-            font-family: 'Georgia', serif;
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: #666;
-            line-height: 1.4;
-        }
-
-        .movie-label {
-            position: absolute;
-            bottom: -45px;
-            right: 0;
-            font-size: 10px;
-            color: #999;
-            font-style: italic;
-        }
-
-        /* 加载动画 */
-        .loading-overlay {
-            position: absolute; inset: 0; background: rgba(0,0,0,0.8);
-            display: none; align-items: center; justify-content: center; z-index: 50;
-        }
+        .quote-area { margin-top: 30px; padding: 0 10px; color: #1a1a1a; }
+        .quote-zh { font-family: 'Noto Serif SC', serif; font-size: 1.25rem; font-weight: 900; line-height: 1.6; margin-bottom: 8px; }
+        .quote-en { font-family: 'Georgia', serif; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: #666; }
+        .movie-label { position: absolute; bottom: -45px; right: 0; font-size: 10px; color: #999; font-style: italic; }
+        .loading-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.8); display: none; align-items: center; justify-content: center; z-index: 50; }
     </style>
 </head>
 <body class="flex flex-col items-center py-10">
-
-    <details class="w-full max-w-md bg-white/5 rounded-lg mb-8 text-[10px] overflow-hidden">
-        <summary class="p-3 cursor-pointer text-gray-400 text-center tracking-widest uppercase">API Keys Setup (TMDB & OpenRouter)</summary>
-        <div class="p-4 space-y-3 bg-white/10">
-            <input type="password" id="tmdb-key" placeholder="TMDB Read Access Token" class="w-full bg-black/50 border border-white/20 p-2 rounded text-yellow-500">
-            <input type="password" id="or-key" placeholder="OpenRouter API Key" class="w-full bg-black/50 border border-white/20 p-2 rounded text-blue-400">
-        </div>
-    </details>
-
     <div class="flex gap-4 mb-10">
-        <button onclick="setRes('res-16-9')" class="text-[10px] border-b border-gray-600 pb-1 hover:border-white">WIDE 16:9</button>
-        <button onclick="setRes('res-1-1')" class="text-[10px] border-b border-gray-600 pb-1 hover:border-white">SQUARE 1:1</button>
-        <button onclick="setRes('res-3-4')" class="text-[10px] border-b border-gray-600 pb-1 hover:border-white">PORTRAIT 3:4</button>
+        <button onclick="setRes('res-16-9')" class="text-[10px] border-b border-gray-600 pb-1">WIDE 16:9</button>
+        <button onclick="setRes('res-1-1')" class="text-[10px] border-b border-gray-600 pb-1">SQUARE 1:1</button>
+        <button onclick="setRes('res-3-4')" class="text-[10px] border-b border-gray-600 pb-1">PORTRAIT 3:4</button>
     </div>
 
     <div id="polaroid-card" class="res-16-9">
         <div class="photo-frame">
-            <div id="loader" class="loading-overlay">
-                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-            </div>
+            <div id="loader" class="loading-overlay"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div></div>
             <img id="movie-img" src="" alt="">
         </div>
-        
         <div class="quote-area relative">
-            <p id="quote-zh" class="quote-zh">等待你的电影人生...</p>
-            <p id="quote-en" class="quote-en">Waiting for your cinematic moment.</p>
+            <p id="quote-zh" class="quote-zh">每一个瞬间都是电影...</p>
+            <p id="quote-en" class="quote-en">Every moment is a scene.</p>
             <p id="movie-meta" class="movie-label"></p>
         </div>
     </div>
 
     <div class="mt-12 flex gap-8">
-        <button onclick="generate()" class="px-8 py-3 bg-white text-black text-xs font-bold rounded-full hover:bg-yellow-400 transition">NEXT SHOT</button>
-        <button onclick="download()" class="px-8 py-3 border border-white text-xs font-bold rounded-full hover:bg-white hover:text-black transition">EXPORT</button>
+        <button onclick="generate()" class="px-8 py-3 bg-white text-black text-xs font-bold rounded-full hover:bg-yellow-400">NEXT SHOT</button>
+        <button onclick="download()" class="px-8 py-3 border border-white text-xs font-bold rounded-full">EXPORT</button>
     </div>
 
     <script>
-        function setRes(res) {
-            document.getElementById('polaroid-card').className = res;
-        }
+        function setRes(res) { document.getElementById('polaroid-card').className = res; }
 
         async function generate() {
-            const tmdbKey = document.getElementById('tmdb-key').value;
-            const orKey = document.getElementById('or-key').value;
-            if (!tmdbKey || !orKey) return alert("请在上方配置面板填写两个 API Key");
-
             document.getElementById('loader').style.display = 'flex';
-
             try {
-                // 1. 从 TMDB 获取随机热门电影
-                const page = Math.floor(Math.random() * 20) + 1;
-                const tmdbRes = await fetch(`https://api.themoviedb.org/3/discover/movie?sort_by=popularity.desc&page=${page}&language=zh-CN`, {
-                    headers: { Authorization: `Bearer ${tmdbKey}` }
-                });
-                const tmdbData = await tmdbRes.json();
-                const movie = tmdbData.results[Math.floor(Math.random() * tmdbData.results.length)];
+                // 1. 调用后端代理获取电影及台词
+                const res = await fetch('/api/generate');
+                const data = await res.json();
                 
-                // 更新剧照
-                document.getElementById('movie-img').src = `https://image.tmdb.org/t/p/original${movie.backdrop_path}`;
-                document.getElementById('movie-meta').innerText = `— ${movie.title} (${movie.release_date.split('-')[0]})`;
-
-                // 2. 从 OpenRouter 获取该电影的经典 Emo 台词
-                const aiRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-                    method: "POST",
-                    headers: {
-                        "Authorization": `Bearer ${orKey}`,
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        "model": "google/gemini-2.0-flash-001",
-                        "messages": [
-                            {
-                                "role": "user",
-                                "content": `你是一个文艺电影评论家。请给出电影《${movie.title}》中一句最经典、充满emo感或文艺哲理的台词。
-                                格式要求：只要输出json，格式为 {"zh": "中文台词", "en": "英文台词"}。不要有其他废话。`
-                            }
-                        ]
-                    })
-                });
-                const aiData = await aiRes.json();
-                const content = JSON.parse(aiData.choices[0].message.content.replace(/```json|```/g, ''));
-                
-                document.getElementById('quote-zh').innerText = content.zh;
-                document.getElementById('quote-en').innerText = content.en;
-
+                // 2. 更新界面
+                document.getElementById('movie-img').src = data.image;
+                document.getElementById('quote-zh').innerText = data.quote.zh;
+                document.getElementById('quote-en').innerText = data.quote.en;
+                document.getElementById('movie-meta').innerText = `— ${data.title} (${data.year})`;
             } catch (err) {
-                console.error(err);
-                alert("生成失败，请检查 API Key 或网络状况");
+                alert("生成失败，请稍后再试");
             } finally {
                 document.getElementById('loader').style.display = 'none';
             }
@@ -187,7 +91,7 @@
             const card = document.getElementById('polaroid-card');
             html2canvas(card, { scale: 3, useCORS: true, backgroundColor: '#121212' }).then(canvas => {
                 const link = document.createElement('a');
-                link.download = `Cinema-Polaroid-${Date.now()}.png`;
+                link.download = `CineMood-${Date.now()}.png`;
                 link.href = canvas.toDataURL();
                 link.click();
             });
