@@ -2,29 +2,36 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>CineMood Pro - 电影感图片生成器</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;900&display=swap" rel="stylesheet">
     <style>
         body { 
-            background: #000; 
+            background: #0d0d0d; 
             color: #fff; 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
         }
         
-        /* 容器适配：手机端全屏感 */
+        /* 响应式卡片：核心优化 */
         #polaroid-card {
             background: #fdfdfd; 
             padding: 15px 15px 50px 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
             margin: 0 auto;
-            width: 92vw; /* 手机端宽度占 92% */
+            
+            /* 手机端：占满屏幕宽度的 92% */
+            width: 92vw; 
+            
+            /* 电脑端：限制最大宽度为 500px，防止过大 */
+            max-width: 500px;
+            
             display: flex;
             flex-direction: column;
-            transition: transform 0.3s ease;
+            transition: all 0.4s ease-in-out;
         }
 
         .photo-frame {
@@ -37,64 +44,81 @@
             position: relative;
         }
 
-        /* 比例控制：手机端 16:9 默认最美 */
+        /* 比例控制：确保图片完整显示 */
         .res-16-9 .photo-frame { aspect-ratio: 16 / 9; }
         .res-1-1 .photo-frame { aspect-ratio: 1 / 1; }
         .res-3-4 .photo-frame { aspect-ratio: 3 / 4; }
 
-        #movie-img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        #movie-img { 
+            max-width: 100%; 
+            max-height: 100%; 
+            object-fit: contain; /* 核心：不裁切，按比例缩小 */
+            transition: filter 0.3s ease;
+        }
 
-        .quote-area { margin-top: 25px; padding: 0 5px; color: #1a1a1a; word-break: break-all; }
+        /* 黑白滤镜 */
+        .bnw-filter { filter: grayscale(1) contrast(1.1) brightness(0.95); }
+
+        .quote-area { margin-top: 25px; padding: 0 5px; color: #1a1a1a; word-break: break-word; }
         
-        /* 针对手机调小字号 */
         .quote-zh { 
             font-family: 'Noto Serif SC', serif; 
-            font-size: 1.1rem; 
+            font-size: 1.15rem; 
             font-weight: 900; 
             line-height: 1.5; 
-            margin-bottom: 6px; 
+            margin-bottom: 8px; 
+            letter-spacing: -0.01em;
         }
+        
+        /* 针对电脑端调大台词字体 */
+        @media (min-width: 768px) {
+            .quote-zh { font-size: 1.3rem; }
+        }
+
         .quote-en { 
             font-family: 'Georgia', serif; 
             font-size: 0.65rem; 
             text-transform: uppercase; 
-            letter-spacing: 0.05em; 
+            letter-spacing: 0.08em; 
             color: #777; 
-            line-height: 1.3;
+            line-height: 1.4;
         }
-        .movie-label { font-size: 9px; color: #aaa; font-style: italic; margin-top: 15px; text-align: right; }
+        .movie-label { font-size: 9px; color: #aaa; font-style: italic; margin-top: 18px; text-align: right; }
 
-        .loading-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 50; }
+        .loading-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.88); display: none; align-items: center; justify-content: center; z-index: 50; }
 
-        /* 底部导航栏：适配手机手势 */
+        /* 底部导航栏：适配安全区域 */
         .nav-bar {
             position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(18, 18, 18, 0.95);
+            bottom: 0; left: 0; right: 0;
+            background: rgba(18, 18, 18, 0.96);
             backdrop-filter: blur(10px);
             padding: 15px 20px calc(15px + env(safe-area-inset-bottom));
             display: flex;
             justify-content: space-around;
             border-top: 1px solid rgba(255,255,255,0.1);
+            z-index: 80;
         }
 
-        /* 导出后的预览图层：长按保存的关键 */
+        .icon-btn { flex: 1; display: flex; flex-direction: column; align-items: center; color: #777; transition: color 0.3s; }
+        .icon-btn.active { color: #fff; }
+        .icon-btn span { font-size: 9px; font-weight: bold; margin-top: 5px; text-transform: uppercase; }
+
+        /* 预览/导出层：长按保存的核心 */
         #export-overlay {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.9);
+            position: fixed; inset: 0; background: rgba(0,0,0,0.95);
             display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 100;
-            padding: 20px;
+            padding: 20px calc(20px + env(safe-area-inset-right)) 20px calc(20px + env(safe-area-inset-left));
         }
-        #preview-img { max-width: 100%; box-shadow: 0 0 20px rgba(0,0,0,1); }
+        #preview-img { max-width: 90vw; max-height: 80vh; object-fit: contain; box-shadow: 0 0 30px rgba(0,0,0,1); }
     </style>
 </head>
-<body class="flex flex-col items-center pt-8 pb-32">
+<body class="flex flex-col items-center pt-10 pb-36">
 
-    <div class="flex gap-6 mb-8 text-gray-400">
-        <button onclick="setRes('res-16-9')" class="text-[11px] tracking-widest font-bold">16:9</button>
-        <button onclick="setRes('res-1-1')" class="text-[11px] tracking-widest font-bold">1:1</button>
-        <button onclick="setRes('res-3-4')" class="text-[11px] tracking-widest font-bold">3:4</button>
+    <div class="flex gap-8 mb-10 text-gray-500 text-[10px] tracking-[0.3em] font-bold">
+        <button onclick="setRes('res-16-9')" class="hover:text-white transition">16:9</button>
+        <button onclick="setRes('res-1-1')" class="hover:text-white transition">1:1</button>
+        <button onclick="setRes('res-3-4')" class="hover:text-white transition">3:4</button>
     </div>
 
     <div id="polaroid-card" class="res-16-9">
@@ -102,37 +126,44 @@
             <div id="loader" class="loading-overlay">
                 <div class="text-center">
                     <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto"></div>
-                    <p class="text-[10px] mt-2 tracking-widest">FILM LOADING...</p>
+                    <p class="text-[9px] mt-3 tracking-[0.3em] text-gray-400">FILM LOADING</p>
                 </div>
             </div>
             <img id="movie-img" src="" alt="" crossorigin="anonymous">
         </div>
         <div class="quote-area relative">
-            <p id="quote-zh" class="quote-zh">所有的记忆都是潮湿的。</p>
-            <p id="quote-en" class="quote-en">All memories are traces of tears.</p>
+            <p id="quote-zh" class="quote-zh">如果，我多一张船票，你会不会跟我走？</p>
+            <p id="quote-en" class="quote-en">If I had an extra ticket, would you go with me?</p>
             <p id="movie-meta" class="movie-label"></p>
         </div>
     </div>
 
     <div id="export-overlay" onclick="this.style.display='none'">
-        <p class="text-white text-xs mb-4">↑ 长按图片保存到相册 ↑</p>
+        <p class="text-gray-400 text-[10px] tracking-[0.3em] mb-6">↓ 长按图片保存至相册 ↓</p>
         <img id="preview-img" src="" alt="">
-        <button class="mt-8 text-gray-400 text-xs border border-gray-700 px-6 py-2 rounded-full">点击空白处返回</button>
+        <button class="mt-10 text-gray-600 text-xs border border-gray-800 px-8 py-2 rounded-full hover:border-gray-600 transition">点击空白处返回</button>
     </div>
 
     <div class="nav-bar">
-        <button onclick="generate()" class="flex flex-col items-center">
-            <div class="w-12 h-12 flex items-center justify-center rounded-full bg-yellow-500 text-black shadow-lg shadow-yellow-500/20 active:scale-90 transition">
-                <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+        <button onclick="generate()" class="icon-btn active active:scale-95 transition">
+            <div class="w-12 h-12 flex items-center justify-center rounded-full bg-white text-black shadow-lg">
+                <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
             </div>
-            <span class="text-[9px] mt-1 font-bold text-gray-400">NEXT</span>
+            <span>NEXT</span>
         </button>
         
-        <button onclick="exportImage()" class="flex flex-col items-center">
-            <div class="w-12 h-12 flex items-center justify-center rounded-full border border-gray-600 active:scale-90 transition">
-                <svg width="22" height="22" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+        <button onclick="toggleFilter()" class="icon-btn active:scale-95 transition mx-10">
+            <div class="w-12 h-12 flex items-center justify-center rounded-full border border-gray-700">
+                <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8v16z"/></svg>
             </div>
-            <span class="text-[9px] mt-1 font-bold text-gray-400">SHARE</span>
+            <span>B&W</span>
+        </button>
+
+        <button onclick="exportImage()" class="icon-btn active:scale-95 transition">
+            <div class="w-12 h-12 flex items-center justify-center rounded-full border border-gray-700">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+            </div>
+            <span>SHARE</span>
         </button>
     </div>
 
@@ -141,21 +172,32 @@
             document.getElementById('polaroid-card').className = res;
         }
 
+        function toggleFilter() {
+            document.getElementById('movie-img').classList.toggle('bnw-filter');
+        }
+
         async function generate() {
             document.getElementById('loader').style.display = 'flex';
             try {
                 const res = await fetch('/api/generate');
+                if (!res.ok) throw new Error("后端接口错误");
                 const data = await res.json();
                 
-                // 解决图片跨域
+                // 彻底解决跨域：使用 CORS 且动态更新时间戳
                 const img = document.getElementById('movie-img');
-                img.src = data.image + "?t=" + new Date().getTime(); // 加随机后缀强制刷新缓存
+                const timestamp = new Date().getTime();
+                img.src = `${data.image}?t=${timestamp}`;
                 
                 document.getElementById('quote-zh').innerText = data.quote.zh;
                 document.getElementById('quote-en').innerText = data.quote.en;
                 document.getElementById('movie-meta').innerText = `— ${data.title} (${data.year})`;
+                
+                // 换图时默认保持彩色
+                document.getElementById('movie-img').classList.remove('bnw-filter');
+
             } catch (err) {
-                alert("生成失败，请稍后再试");
+                console.error(err);
+                alert("电影感生成失败，请稍后再试。");
             } finally {
                 document.getElementById('loader').style.display = 'none';
             }
@@ -165,16 +207,19 @@
             const card = document.getElementById('polaroid-card');
             const overlay = document.getElementById('export-overlay');
             const previewImg = document.getElementById('preview-img');
-
-            // 手机端导出逻辑：生成 base64 图片并显示，引导长按保存
+            
+            // 解决跨域，scale:3提高清晰度，backgroundColor确保底色
             html2canvas(card, { 
                 scale: 3, 
                 useCORS: true, 
                 backgroundColor: '#fdfdfd',
-                logging: false
+                logging: false,
+                allowTaint: true
             }).then(canvas => {
                 previewImg.src = canvas.toDataURL('image/png');
                 overlay.style.display = 'flex';
+            }).catch(err => {
+                alert("导出失败，可能是网络原因，请重试。");
             });
         }
         
