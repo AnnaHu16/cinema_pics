@@ -2,21 +2,25 @@ export default async function handler(req, res) {
     const TMDB_KEY = process.env.TMDB_API_KEY;
     const OR_KEY = process.env.OPENROUTER_API_KEY;
 
-    const fallbackQuote = { zh: "有些事，你现在不必问；有些人，你永远不必等。", en: "Some things you don't have to ask now; some people you never have to wait for." };
+    const fallbackQuote = { zh: "生活就像一盒巧克力，你永远不知道下一块是什么味道。", en: "Life is like a box of chocolates. You never know what you're gonna get." };
 
     try {
-        const page = Math.floor(Math.random() * 10) + 1;
+        // 1. 扩大随机范围：从前 20 页热门电影中随机挑选
+        const page = Math.floor(Math.random() * 20) + 1;
+        const movieIndex = Math.floor(Math.random() * 20);
         const today = new Date().toISOString().split('T')[0];
-        const tenYearsAgo = "2016-01-01";
+        const tenYearsAgo = "2010-01-01"; // 稍微扩大年份范围
 
         const tmdbRes = await fetch(
             `https://api.themoviedb.org/3/discover/movie?sort_by=popularity.desc&page=${page}&language=zh-CN&primary_release_date.gte=${tenYearsAgo}&primary_release_date.lte=${today}`,
             { headers: { Authorization: `Bearer ${TMDB_KEY}` } }
         );
         const tmdbData = await tmdbRes.json();
-        const movie = tmdbData.results[Math.floor(Math.random() * tmdbData.results.length)];
+        const movie = tmdbData.results[movieIndex] || tmdbData.results[0];
 
-        // --- 核心修改：强化原台词检索 Prompt ---
+        // 2. 注入随机噪声 (Nonce) 强迫 AI 刷新输出
+        const nonce = Math.random().toString(36).substring(7);
+
         const aiRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
             headers: { "Authorization": `Bearer ${OR_KEY}`, "Content-Type": "application/json" },
@@ -24,12 +28,10 @@ export default async function handler(req, res) {
                 "model": "google/gemini-2.0-flash-001",
                 "messages": [{ 
                     "role": "user", 
-                    "content": `你是一个精通中外电影的专家。
-                    请检索并给出电影《${movie.title}》 (${movie.release_date}) 中一句最真实、最具代表性的原台词。
-                    要求：
-                    1. 必须是该电影中确实出现的经典对白或内心独白。
-                    2. 提供中文翻译和对应的英文原文（如果是华语片请自行贴切翻译成英文）。
-                    3. 严格按此JSON格式输出，不要有任何其他解释文字：{"zh":"中文原台词","en":"English Quote"}` 
+                    "content": `电影：《${movie.title}》 (${movie.release_date})。
+                    指令：请提供该电影的一句真实、经典的台词。
+                    注意：不要给和之前重复的台词。随机参考号：${nonce}。
+                    格式：只需输出JSON：{"zh":"中文","en":"English"}` 
                 }]
             })
         });
@@ -41,7 +43,7 @@ export default async function handler(req, res) {
             try {
                 const parsedQuote = JSON.parse(content);
                 if (parsedQuote.zh && parsedQuote.en) quote = parsedQuote;
-            } catch (e) { console.error("解析失败"); }
+            } catch (e) { console.error("Parse Error"); }
         }
 
         const safeMovie = {
