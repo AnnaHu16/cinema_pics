@@ -326,8 +326,25 @@
 
     <script>
         let currentRatio = 'res-16-9';
-        let currentData = null;
-        let isRendering = false; // 防止并发渲染
+        let currentData  = null;
+        let isRendering  = false;
+
+        // 根据当前比例决定用 backdrop 还是 poster
+        // 3:4（小红书）用竖版海报，其余用横版剧照
+        function pickImageForRatio(images, ratio) {
+            if (!images) return { b64: null, focal: { x: 50, y: 40 } };
+            return ratio === 'res-3-4' && images.poster?.b64
+                ? images.poster
+                : (images.backdrop?.b64 ? images.backdrop : images.poster);
+        }
+
+        function applyImage(images, ratio) {
+            const chosen   = pickImageForRatio(images, ratio);
+            const sourceImg = document.getElementById('source-img');
+            sourceImg.style.objectPosition = `${chosen.focal.x}% ${chosen.focal.y}%`;
+            sourceImg.src = chosen.b64 || '';
+            return chosen.b64;
+        }
 
         function setRatio(r, btn) {
             if (currentRatio === r) return;
@@ -336,9 +353,10 @@
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             btn.classList.add('active');
 
-            // 有图时直接重渲染，不触碰按钮状态，不显示大 loading
             if (currentData) {
-                renderCanvas({ silent: true });
+                // 切换图片源（海报 ↔ 剧照）并重新渲染
+                const b64 = applyImage(currentData.images, r);
+                if (b64) renderCanvas({ silent: true });
             }
         }
 
@@ -349,91 +367,93 @@
             setTimeout(() => toast.classList.remove('show'), 3000);
         }
 
-        // silent=true：切换尺寸时的轻量重渲染，保留当前图，叠一层半透明蒙层
         function renderCanvas({ silent = false } = {}) {
             if (isRendering) return;
             isRendering = true;
 
-            const btn = document.getElementById('gen-btn');
-            const finalImg = document.getElementById('final-img');
+            const btn         = document.getElementById('gen-btn');
+            const finalImg    = document.getElementById('final-img');
             const placeholder = document.getElementById('placeholder');
 
             if (silent) {
-                // 切换尺寸：图片短暂半透，不显示 loading，按钮不禁用
-                finalImg.style.opacity = '0.35';
+                finalImg.style.opacity    = '0.35';
                 finalImg.style.transition = 'opacity 0.15s';
             } else {
-                btn.disabled = true;
+                btn.disabled              = true;
                 placeholder.style.display = 'flex';
-                finalImg.style.display = 'none';
-                finalImg.style.opacity = '1';
+                finalImg.style.display    = 'none';
+                finalImg.style.opacity    = '1';
             }
 
             html2canvas(document.getElementById('capture-target'), {
-                scale: 3,
+                scale:           3,
                 backgroundColor: '#f8f4ee',
-                useCORS: true,
-                allowTaint: false,
-                logging: false,
+                useCORS:         true,
+                allowTaint:      false,
+                logging:         false,
             }).then(canvas => {
-                finalImg.src = canvas.toDataURL('image/jpeg', 0.95);
-                finalImg.style.display = 'block';
-                finalImg.style.opacity = '1';
+                finalImg.src          = canvas.toDataURL('image/jpeg', 0.95);
+                finalImg.style.display  = 'block';
+                finalImg.style.opacity  = '1';
                 placeholder.style.display = 'none';
                 if (!silent) {
-                    btn.disabled = false;
-                    btn.innerText = '下一张 NEXT';
+                    btn.disabled    = false;
+                    btn.innerText   = '下一张 NEXT';
                 }
             }).catch(() => {
                 showError('渲染失败，请重试');
                 finalImg.style.opacity = '1';
                 if (!silent) {
-                    btn.disabled = false;
-                    btn.innerText = '下一张 NEXT';
+                    btn.disabled          = false;
+                    btn.innerText         = '下一张 NEXT';
                     placeholder.style.display = 'none';
                 }
-            }).finally(() => {
-                isRendering = false;
-            });
+            }).finally(() => { isRendering = false; });
         }
 
         async function generate() {
-            const btn = document.getElementById('gen-btn');
-            const finalImg = document.getElementById('final-img');
+            const btn         = document.getElementById('gen-btn');
+            const finalImg    = document.getElementById('final-img');
             const placeholder = document.getElementById('placeholder');
 
-            btn.disabled = true;
-            btn.innerText = 'DEVELOPING...';
+            btn.disabled              = true;
+            btn.innerText             = 'DEVELOPING...';
             placeholder.style.display = 'flex';
-            finalImg.style.display = 'none';
-            finalImg.style.opacity = '1';
+            finalImg.style.display    = 'none';
+            finalImg.style.opacity    = '1';
 
             try {
-                const res = await fetch('/api/generate');
+                const res  = await fetch('/api/generate');
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
-                if (!data.image) throw new Error('No image returned');
+
+                const chosen = pickImageForRatio(data.images, currentRatio);
+                if (!chosen?.b64) throw new Error('No image returned');
 
                 currentData = data;
 
                 document.getElementById('target-zh').innerText   = data.quote.zh;
                 document.getElementById('target-en').innerText   = data.quote.en;
-                document.getElementById('target-meta').innerText = `${data.title}${data.year ? '  ' + data.year : ''}`;
+                document.getElementById('target-meta').innerText =
+                    `${data.title}${data.year ? '  ' + data.year : ''}`;
 
                 const sourceImg = document.getElementById('source-img');
-                sourceImg.onload = () => renderCanvas({ silent: false });
-                sourceImg.onerror = function () {
+                // 应用焦点坐标，让 object-fit:cover 以正确的位置裁剪
+                sourceImg.style.objectPosition = `${chosen.focal.x}% ${chosen.focal.y}%`;
+
+                sourceImg.onload  = () => renderCanvas({ silent: false });
+                sourceImg.onerror = () => {
                     showError('图片加载失败');
-                    btn.disabled = false;
+                    btn.disabled  = false;
                     btn.innerText = '下一张 NEXT';
                 };
-                sourceImg.src = data.image;
+                sourceImg.src = chosen.b64;
 
             } catch (err) {
                 console.error(err);
                 showError('获取失败，请重试');
-                btn.disabled = false;
-                btn.innerText = '重试 RETRY';
+                btn.disabled          = false;
+                btn.innerText         = '重试 RETRY';
                 placeholder.style.display = 'none';
             }
         }
