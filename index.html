@@ -52,11 +52,17 @@
             width: 100%;
             background: #000;
             overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            position: relative;
         }
-        .photo-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .photo-frame img {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+            display: block;
+        }
 
         .res-16-9  .photo-frame { aspect-ratio: 16 / 9; }
         .res-3-4   .photo-frame { aspect-ratio: 3 / 4; }
