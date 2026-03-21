@@ -320,13 +320,20 @@
 
     <script>
         let currentRatio = 'res-16-9';
+        let currentData = null;
+        let isRendering = false; // 防止并发渲染
 
         function setRatio(r, btn) {
+            if (currentRatio === r) return;
             currentRatio = r;
             document.getElementById('capture-target').className = `polaroid ${r}`;
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             btn.classList.add('active');
-            generate();
+
+            // 有图时直接重渲染，不触碰按钮状态，不显示大 loading
+            if (currentData) {
+                renderCanvas({ silent: true });
+            }
         }
 
         function showError(msg) {
@@ -334,6 +341,54 @@
             toast.textContent = msg;
             toast.classList.add('show');
             setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // silent=true：切换尺寸时的轻量重渲染，保留当前图，叠一层半透明蒙层
+        function renderCanvas({ silent = false } = {}) {
+            if (isRendering) return;
+            isRendering = true;
+
+            const btn = document.getElementById('gen-btn');
+            const finalImg = document.getElementById('final-img');
+            const placeholder = document.getElementById('placeholder');
+
+            if (silent) {
+                // 切换尺寸：图片短暂半透，不显示 loading，按钮不禁用
+                finalImg.style.opacity = '0.35';
+                finalImg.style.transition = 'opacity 0.15s';
+            } else {
+                btn.disabled = true;
+                placeholder.style.display = 'flex';
+                finalImg.style.display = 'none';
+                finalImg.style.opacity = '1';
+            }
+
+            html2canvas(document.getElementById('capture-target'), {
+                scale: 3,
+                backgroundColor: '#f8f4ee',
+                useCORS: true,
+                allowTaint: false,
+                logging: false,
+            }).then(canvas => {
+                finalImg.src = canvas.toDataURL('image/jpeg', 0.95);
+                finalImg.style.display = 'block';
+                finalImg.style.opacity = '1';
+                placeholder.style.display = 'none';
+                if (!silent) {
+                    btn.disabled = false;
+                    btn.innerText = '下一张 NEXT';
+                }
+            }).catch(() => {
+                showError('渲染失败，请重试');
+                finalImg.style.opacity = '1';
+                if (!silent) {
+                    btn.disabled = false;
+                    btn.innerText = '下一张 NEXT';
+                    placeholder.style.display = 'none';
+                }
+            }).finally(() => {
+                isRendering = false;
+            });
         }
 
         async function generate() {
@@ -345,39 +400,22 @@
             btn.innerText = 'DEVELOPING...';
             placeholder.style.display = 'flex';
             finalImg.style.display = 'none';
+            finalImg.style.opacity = '1';
 
             try {
                 const res = await fetch('/api/generate');
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
-
                 if (!data.image) throw new Error('No image returned');
+
+                currentData = data;
 
                 document.getElementById('target-zh').innerText   = data.quote.zh;
                 document.getElementById('target-en').innerText   = data.quote.en;
                 document.getElementById('target-meta').innerText = `${data.title}${data.year ? '  ' + data.year : ''}`;
 
                 const sourceImg = document.getElementById('source-img');
-                sourceImg.onload = function () {
-                    html2canvas(document.getElementById('capture-target'), {
-                        scale: 3,
-                        backgroundColor: '#f8f4ee',
-                        useCORS: true,
-                        allowTaint: false,
-                        logging: false,
-                    }).then(canvas => {
-                        finalImg.src = canvas.toDataURL('image/jpeg', 0.95);
-                        finalImg.style.display = 'block';
-                        placeholder.style.display = 'none';
-                        btn.disabled = false;
-                        btn.innerText = '下一张 NEXT';
-                    }).catch(() => {
-                        showError('渲染失败，请重试');
-                        btn.disabled = false;
-                        btn.innerText = '下一张 NEXT';
-                        placeholder.style.display = 'none';
-                    });
-                };
+                sourceImg.onload = () => renderCanvas({ silent: false });
                 sourceImg.onerror = function () {
                     showError('图片加载失败');
                     btn.disabled = false;
