@@ -3,134 +3,322 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>CineMood AI - 电影台词拍立得</title>
+    <title>CineMood AI</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@700;900&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
-
     <style>
         :root {
             --cream: #f8f4ee;
             --ink: #1a1a1a;
             --dim: #888;
             --accent: #c8a97e;
+            --bg: #0c0b09;
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
         body {
-            background: #0c0b09;
+            background: var(--bg);
             color: #fff;
             font-family: -apple-system, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
             min-height: 100vh;
-            padding-bottom: 130px;
+            overflow-x: hidden;
         }
 
-        /* ─── 心情选择屏 ─── */
+        /* ════════════════════════════════════════
+           心情选择屏
+        ════════════════════════════════════════ */
         #mood-screen {
             position: fixed;
             inset: 0;
-            background: #0c0b09;
+            background: var(--bg);
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             z-index: 300;
-            padding: 32px;
-            gap: 0;
+            padding: 40px 28px calc(40px + env(safe-area-inset-bottom));
+            transition: opacity 0.4s ease, transform 0.4s ease;
         }
-        #mood-screen.hidden { display: none; }
+        #mood-screen.leaving {
+            opacity: 0;
+            transform: translateY(-24px);
+            pointer-events: none;
+        }
+        #mood-screen.gone { display: none; }
 
         .mood-eyebrow {
             font-size: 10px;
-            letter-spacing: 0.45em;
-            color: #444;
+            letter-spacing: 0.5em;
+            color: #3a3830;
             text-transform: uppercase;
-            margin-bottom: 20px;
+            margin-bottom: 28px;
         }
         .mood-title {
             font-family: 'Noto Serif SC', serif;
-            font-size: 26px;
+            font-size: 28px;
             font-weight: 900;
             color: #fff;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             text-align: center;
         }
         .mood-sub {
             font-size: 12px;
-            color: #555;
-            margin-bottom: 48px;
+            color: #3a3830;
+            margin-bottom: 44px;
             text-align: center;
+            letter-spacing: 0.05em;
         }
+
+        /* 四格心情 */
         .mood-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 12px;
+            gap: 10px;
             width: 100%;
-            max-width: 320px;
-            margin-bottom: 16px;
+            max-width: 310px;
+            margin-bottom: 14px;
         }
         .mood-btn {
-            border: 1px solid #222;
+            border: 1px solid #1c1b18;
             background: #111;
-            border-radius: 12px;
-            padding: 20px 12px;
+            border-radius: 14px;
+            padding: 22px 12px 18px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 8px;
+            gap: 9px;
             cursor: pointer;
-            transition: border-color 0.2s, background 0.2s;
+            transition: border-color 0.18s, background 0.18s, transform 0.1s;
+            -webkit-user-select: none;
         }
-        .mood-btn:active { transform: scale(0.97); }
-        .mood-btn.selected { border-color: var(--accent); background: #1a1610; }
-        .mood-icon { font-size: 28px; line-height: 1; }
-        .mood-label { font-size: 13px; color: #aaa; letter-spacing: 0.05em; }
-        .mood-btn.selected .mood-label { color: var(--accent); }
+        .mood-btn:active { transform: scale(0.95); }
+        .mood-icon { font-size: 30px; line-height: 1; }
+        .mood-label { font-size: 13px; color: #666; letter-spacing: 0.04em; }
 
-        .mood-divider { color: #333; font-size: 11px; margin: 4px 0 16px; letter-spacing: 0.2em; }
-
-        .today-btn {
-            width: 100%;
-            max-width: 320px;
-            border: 1px solid #222;
-            background: #0e0d0b;
-            border-radius: 12px;
-            padding: 16px;
+        /* 分割线 */
+        .or-divider {
             display: flex;
             align-items: center;
-            gap: 14px;
+            gap: 12px;
+            width: 100%;
+            max-width: 310px;
+            margin: 6px 0 14px;
+            color: #252420;
+            font-size: 11px;
+            letter-spacing: 0.2em;
+        }
+        .or-divider::before, .or-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #1c1b18;
+        }
+
+        /* 今日上映卡 */
+        .today-btn {
+            width: 100%;
+            max-width: 310px;
+            border: 1px solid #1c1b18;
+            background: #0e0d0b;
+            border-radius: 14px;
+            padding: 18px 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
             cursor: pointer;
-            transition: border-color 0.2s, background 0.2s;
-            margin-bottom: 40px;
+            transition: border-color 0.18s, background 0.18s, transform 0.1s;
+            margin-bottom: 44px;
         }
         .today-btn:active { transform: scale(0.98); }
-        .today-btn.selected { border-color: var(--accent); background: #1a1610; }
-        .today-icon { font-size: 24px; }
+        .today-icon { font-size: 28px; flex-shrink: 0; }
         .today-text { text-align: left; }
-        .today-title { font-size: 13px; color: #aaa; }
-        .today-btn.selected .today-title { color: var(--accent); }
-        .today-desc { font-size: 11px; color: #444; margin-top: 2px; }
+        .today-title { font-size: 14px; color: #888; line-height: 1.4; }
+        .today-desc  { font-size: 11px; color: #333; margin-top: 3px; line-height: 1.4; }
 
-        .mood-confirm {
-            width: 100%;
-            max-width: 320px;
-            padding: 16px;
-            background: var(--accent);
-            color: #0c0b09;
-            border-radius: 6px;
-            font-weight: 900;
-            letter-spacing: 0.28em;
-            font-size: 12px;
-            text-transform: uppercase;
-            border: none;
+        /* 随机入口 */
+        .random-link {
+            font-size: 11px;
+            color: #2e2d28;
+            letter-spacing: 0.1em;
             cursor: pointer;
-            transition: opacity 0.2s;
+            text-decoration: none;
+            border-bottom: 1px solid #252420;
+            padding-bottom: 1px;
+            transition: color 0.2s, border-color 0.2s;
         }
-        .mood-confirm:active { opacity: 0.85; }
+        .random-link:active { color: #555; border-color: #555; }
 
-        /* ─── 隐藏渲染区域 ─── */
+
+        /* ════════════════════════════════════════
+           主界面
+        ════════════════════════════════════════ */
+        #main-screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 60px;
+            padding-bottom: 110px;
+            min-height: 100vh;
+        }
+        #main-screen.visible { display: flex; }
+
+        /* 顶部栏 */
+        .top-bar {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: 52px;
+            background: rgba(12,11,9,0.94);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-bottom: 1px solid #181714;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 100;
+        }
+        .top-logo {
+            font-size: 11px;
+            letter-spacing: 0.35em;
+            color: #3a3830;
+            text-transform: uppercase;
+        }
+        .back-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #555;
+            cursor: pointer;
+            padding: 8px 0;
+            border: none;
+            background: none;
+            transition: color 0.2s;
+            letter-spacing: 0.05em;
+        }
+        .back-btn:active { color: var(--accent); }
+        .back-arrow {
+            width: 16px; height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .back-arrow svg { width: 14px; height: 14px; }
+
+        /* 图片展示区 */
+        #display-area {
+            width: 92vw;
+            max-width: 440px;
+            box-shadow: 0 28px 70px rgba(0,0,0,0.9);
+            border-radius: 2px;
+            overflow: hidden;
+            background: var(--cream);
+            position: relative;
+        }
+
+        /* 胶片显影遮罩 */
+        #develop-overlay {
+            position: absolute;
+            inset: 0;
+            background: #0c0b09;
+            z-index: 10;
+            pointer-events: none;
+            opacity: 0;
+        }
+        #develop-overlay.developing {
+            animation: develop 2s cubic-bezier(0.25, 0, 0.15, 1) forwards;
+        }
+        @keyframes develop {
+            0%   { opacity: 1;    filter: brightness(0); }
+            20%  { opacity: 0.92; filter: brightness(0.15) sepia(1) saturate(0.5) hue-rotate(15deg); }
+            50%  { opacity: 0.55; filter: brightness(0.55) sepia(0.4) saturate(0.8); }
+            80%  { opacity: 0.18; filter: brightness(0.9) sepia(0.08); }
+            100% { opacity: 0;    filter: none; }
+        }
+
+        #final-img { width: 100%; height: auto; display: none; }
+
+        #placeholder {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background: #0e0d0b;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+        }
+        .film-strip { display: flex; gap: 5px; }
+        .film-hole {
+            width: 7px; height: 7px;
+            border-radius: 1px;
+            background: #1e1d1a;
+            animation: fhole 1.4s ease-in-out infinite;
+        }
+        .film-hole:nth-child(2) { animation-delay: 0.25s; }
+        .film-hole:nth-child(3) { animation-delay: 0.5s; }
+        .film-hole:nth-child(4) { animation-delay: 0.75s; }
+        @keyframes fhole {
+            0%,100% { opacity: 0.25; background: #1e1d1a; }
+            50% { opacity: 1; background: var(--accent); }
+        }
+        .loading-text { color: #2e2d28; font-size: 10px; letter-spacing: 0.4em; text-transform: uppercase; }
+
+        /* 运势条 */
+        #fortune-bar {
+            width: 92vw;
+            max-width: 440px;
+            margin-top: 12px;
+            padding: 16px 18px;
+            background: #0e0d0b;
+            border: 1px solid #181714;
+            border-radius: 10px;
+            display: none;
+            gap: 12px;
+            align-items: flex-start;
+            animation: fadeUp 0.5s ease forwards;
+        }
+        #fortune-bar.visible { display: flex; }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: none; }
+        }
+        .fortune-dot {
+            width: 5px; height: 5px;
+            border-radius: 50%;
+            background: var(--accent);
+            flex-shrink: 0;
+            margin-top: 6px;
+        }
+        .fortune-content { flex: 1; }
+        .fortune-eyebrow { font-size: 9px; color: #333; letter-spacing: 0.4em; text-transform: uppercase; margin-bottom: 6px; }
+        .today-badge {
+            display: inline-block;
+            background: #16130e;
+            color: var(--accent);
+            font-size: 10px;
+            padding: 2px 9px;
+            border-radius: 20px;
+            border: 1px solid #2a2218;
+            margin-bottom: 7px;
+            letter-spacing: 0.04em;
+        }
+        .fortune-text {
+            font-size: 13px;
+            color: #999;
+            line-height: 1.7;
+            font-family: 'Noto Serif SC', serif;
+        }
+
+        .hint-text {
+            color: #222;
+            font-size: 10px;
+            letter-spacing: 0.4em;
+            margin-top: 16px;
+            text-align: center;
+        }
+
+        /* 隐藏渲染源 */
         #render-source {
             position: fixed;
             left: -9999px;
@@ -138,19 +326,18 @@
             pointer-events: none;
         }
 
-        /* ─── 拍立得本体 ─── */
+        /* 拍立得本体（html2canvas 捕获用） */
         .polaroid {
             background: var(--cream);
-            padding: 16px 16px 52px 16px;
+            padding: 14px 14px 50px;
             width: 640px;
             display: flex;
             flex-direction: column;
-            align-items: center;
             font-family: 'Noto Serif SC', serif;
         }
-
         .photo-frame {
             width: 100%;
+            aspect-ratio: 16 / 9;
             overflow: hidden;
             position: relative;
         }
@@ -160,197 +347,58 @@
             object-fit: cover; object-position: center;
             filter: blur(20px) brightness(0.4) saturate(1.3);
             transform: scale(1.1);
-            display: block;
         }
         .photo-frame .img-main {
             position: absolute; inset: 0;
             width: 100%; height: 100%;
             object-fit: contain; object-position: center;
-            display: block;
         }
-
-        .res-16-9 .photo-frame { aspect-ratio: 16 / 9; }
-        .res-3-4  .photo-frame { aspect-ratio: 3 / 4; }
-        .res-1-1  .photo-frame { aspect-ratio: 1 / 1; }
-
-        .quote-area { margin-top: 28px; width: 100%; padding: 0 20px; }
-        .quote-zh-wrap { border-left: 3px solid var(--accent); padding-left: 14px; margin-bottom: 14px; }
+        .quote-area { margin-top: 26px; width: 100%; padding: 0 18px; }
+        .quote-zh-wrap { border-left: 3px solid var(--accent); padding-left: 14px; margin-bottom: 12px; }
         .quote-zh { color: var(--ink); font-family: 'Noto Serif SC', serif; font-size: 26px; font-weight: 900; line-height: 1.6; word-break: break-all; }
         .quote-en { color: #999; font-family: 'DM Serif Display', Georgia, serif; font-size: 12px; font-style: italic; letter-spacing: 0.04em; line-height: 1.5; }
-        .movie-meta { margin-top: 20px; width: 100%; display: flex; justify-content: flex-end; align-items: center; gap: 6px; padding-right: 8px; }
+        .movie-meta { margin-top: 18px; width: 100%; display: flex; justify-content: flex-end; align-items: center; gap: 6px; padding-right: 6px; }
         .meta-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
         .meta-text { color: var(--dim); font-size: 11px; font-style: italic; font-family: Georgia, serif; }
 
-        /* ─── 展示区 ─── */
-        #display-area {
-            width: 92vw;
-            max-width: 420px;
-            margin-top: 70px;
-            box-shadow: 0 32px 80px rgba(0,0,0,0.85);
-            border-radius: 2px;
-            overflow: hidden;
-            background: var(--cream);
-            position: relative;
-        }
-
-        /* 胶片显影遮罩层 */
-        #develop-overlay {
-            position: absolute;
-            inset: 0;
-            background: #000;
-            z-index: 10;
-            pointer-events: none;
-            opacity: 0;
-        }
-        #develop-overlay.developing {
-            animation: develop 1.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-        }
-        @keyframes develop {
-            0%   { opacity: 1; filter: brightness(0) sepia(1) saturate(0); }
-            30%  { opacity: 0.85; filter: brightness(0.3) sepia(0.8) saturate(0.4) hue-rotate(20deg); }
-            60%  { opacity: 0.4; filter: brightness(0.7) sepia(0.3) saturate(0.8); }
-            85%  { opacity: 0.1; filter: brightness(0.95) sepia(0.05) saturate(1); }
-            100% { opacity: 0; filter: none; }
-        }
-
-        #final-img { width: 100%; height: auto; display: none; }
-
-        #placeholder {
-            width: 100%;
-            aspect-ratio: 3/4;
-            background: #111;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-        }
-        .film-strip { display: flex; gap: 4px; }
-        .film-hole {
-            width: 8px; height: 8px;
-            border-radius: 1px;
-            background: #2a2a2a;
-            animation: flicker 1.2s ease-in-out infinite;
-        }
-        .film-hole:nth-child(2) { animation-delay: 0.2s; }
-        .film-hole:nth-child(3) { animation-delay: 0.4s; }
-        .film-hole:nth-child(4) { animation-delay: 0.6s; }
-        @keyframes flicker {
-            0%, 100% { opacity: 0.3; }
-            50% { opacity: 1; background: var(--accent); }
-        }
-        .loading-text { color: #444; font-size: 10px; letter-spacing: 0.35em; text-transform: uppercase; }
-
-        /* ─── 运势条 ─── */
-        #fortune-bar {
-            width: 92vw;
-            max-width: 420px;
-            margin-top: 14px;
-            padding: 14px 18px;
-            background: #111;
-            border: 1px solid #1e1c18;
-            border-radius: 8px;
-            display: none;
-            gap: 10px;
-            align-items: flex-start;
-        }
-        #fortune-bar.visible { display: flex; }
-        .fortune-dot {
-            width: 6px; height: 6px;
-            border-radius: 50%;
-            background: var(--accent);
-            flex-shrink: 0;
-            margin-top: 5px;
-        }
-        .fortune-content { flex: 1; }
-        .fortune-eyebrow { font-size: 9px; color: #444; letter-spacing: 0.35em; text-transform: uppercase; margin-bottom: 5px; }
-        .fortune-text { font-size: 13px; color: #bbb; line-height: 1.65; font-family: 'Noto Serif SC', serif; }
-        .today-badge {
-            display: inline-block;
-            background: #1a1610;
-            color: var(--accent);
-            font-size: 10px;
-            padding: 2px 8px;
-            border-radius: 20px;
-            border: 1px solid #2e2518;
-            margin-bottom: 6px;
-            letter-spacing: 0.05em;
-        }
-
-        /* ─── 顶部比例切换栏 ─── */
-        .ratio-tabs {
-            position: fixed;
-            top: 0; left: 0; right: 0;
-            display: flex;
-            justify-content: center;
-            background: rgba(12,11,9,0.92);
-            backdrop-filter: blur(8px);
-            padding: 14px 20px;
-            border-bottom: 1px solid #1e1c18;
-            z-index: 100;
-        }
-        .tab {
-            font-size: 11px; font-weight: 600; color: #444;
-            letter-spacing: 0.18em; text-transform: uppercase;
-            padding: 7px 18px; border-radius: 40px;
-            transition: all 0.2s ease; white-space: nowrap;
-            background: none; border: none; cursor: pointer;
-        }
-        .tab.active { color: #0c0b09; background: var(--accent); }
-
-        /* ─── 底部按钮栏 ─── */
+        /* 底部按钮栏 */
         .nav-bar {
             position: fixed;
             bottom: 0; left: 0; right: 0;
-            background: rgba(12,11,9,0.95);
+            background: rgba(12,11,9,0.96);
             backdrop-filter: blur(12px);
-            padding: 12px 20px;
-            padding-bottom: calc(12px + env(safe-area-inset-bottom));
+            -webkit-backdrop-filter: blur(12px);
+            padding: 14px 20px;
+            padding-bottom: calc(14px + env(safe-area-inset-bottom));
             display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 8px;
-            border-top: 1px solid #1e1c18;
+            justify-content: center;
+            border-top: 1px solid #181714;
             z-index: 100;
         }
-        .btn-row { display: flex; gap: 10px; width: 85%; max-width: 320px; }
         .gen-btn {
-            flex: 1;
-            padding: 14px;
+            width: 85%;
+            max-width: 320px;
+            padding: 15px;
             background: #fff;
             color: #0c0b09;
             border-radius: 4px;
             font-weight: 900;
-            letter-spacing: 0.22em;
+            letter-spacing: 0.28em;
             text-transform: uppercase;
             font-size: 11px;
-            border: none; cursor: pointer;
-            transition: opacity 0.2s, transform 0.15s;
+            border: none;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
         }
         .gen-btn:active { transform: scale(0.97); }
-        .gen-btn:disabled { opacity: 0.35; cursor: not-allowed; }
-        .mood-change-btn {
-            padding: 14px 16px;
-            background: transparent;
-            color: #555;
-            border-radius: 4px;
-            font-size: 11px;
-            letter-spacing: 0.1em;
-            border: 1px solid #222;
-            cursor: pointer;
-            white-space: nowrap;
-            transition: color 0.2s, border-color 0.2s;
-        }
-        .mood-change-btn:active { color: var(--accent); border-color: var(--accent); }
-
-        .hint-text { color: #2a2a2a; font-size: 10px; letter-spacing: 0.38em; margin-top: 14px; text-align: center; }
+        .gen-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
         /* 错误提示 */
         .error-toast {
             position: fixed;
-            top: 70px; left: 50%;
+            top: 64px; left: 50%;
             transform: translateX(-50%);
-            background: #c0392b; color: #fff;
+            background: #8b2020; color: #fff;
             font-size: 12px; padding: 8px 20px;
             border-radius: 40px; z-index: 200;
             opacity: 0; transition: opacity 0.3s;
@@ -365,78 +413,89 @@
     <div id="mood-screen">
         <p class="mood-eyebrow">CineMood AI</p>
         <h1 class="mood-title">今天的心情是？</h1>
-        <p class="mood-sub">为你找到最合适的这一帧</p>
+        <p class="mood-sub">选一个，马上为你冲洗这一帧</p>
 
         <div class="mood-grid">
-            <button class="mood-btn" data-mood="happy" onclick="selectMood(this)">
+            <button class="mood-btn" onclick="startWithMood('happy')">
                 <span class="mood-icon">☀️</span>
                 <span class="mood-label">开心</span>
             </button>
-            <button class="mood-btn" data-mood="sad" onclick="selectMood(this)">
+            <button class="mood-btn" onclick="startWithMood('sad')">
                 <span class="mood-icon">🌧️</span>
                 <span class="mood-label">有点难过</span>
             </button>
-            <button class="mood-btn" data-mood="courage" onclick="selectMood(this)">
+            <button class="mood-btn" onclick="startWithMood('courage')">
                 <span class="mood-icon">🔥</span>
                 <span class="mood-label">需要勇气</span>
             </button>
-            <button class="mood-btn" data-mood="lonely" onclick="selectMood(this)">
+            <button class="mood-btn" onclick="startWithMood('lonely')">
                 <span class="mood-icon">🌙</span>
                 <span class="mood-label">有点孤独</span>
             </button>
         </div>
 
-        <p class="mood-divider">— 或者 —</p>
+        <div class="or-divider">或者</div>
 
-        <button class="today-btn" id="today-btn" data-today="false" onclick="toggleToday(this)">
+        <button class="today-btn" onclick="startWithMood('random', 'today')">
             <span class="today-icon">🎬</span>
             <div class="today-text">
-                <p class="today-title">今日上映纪念版</p>
-                <p class="today-desc">找一部历史上今天上映的电影，附赠今日运势</p>
+                <p class="today-title">历史上的今天上映的电影</p>
+                <p class="today-desc">附赠今日运势，据说很准</p>
             </div>
         </button>
 
-        <button class="mood-confirm" onclick="confirmMood()">开始冲洗胶片 →</button>
+        <span class="random-link" onclick="startWithMood('random')">随便给我一张 →</span>
     </div>
+
 
     <!-- ② 主界面 -->
-    <!-- 比例切换 -->
-    <div class="ratio-tabs">
-        <button onclick="setRatio('res-16-9', this)" class="tab active">16:9</button>
-        <button onclick="setRatio('res-3-4', this)"  class="tab">小红书</button>
-        <button onclick="setRatio('res-1-1', this)"  class="tab">朋友圈</button>
-    </div>
+    <div id="main-screen">
 
-    <!-- 展示区 -->
-    <div id="display-area">
-        <div id="develop-overlay"></div>
-        <div id="placeholder">
-            <div class="film-strip">
-                <div class="film-hole"></div>
-                <div class="film-hole"></div>
-                <div class="film-hole"></div>
-                <div class="film-hole"></div>
+        <div class="top-bar">
+            <span class="top-logo">CineMood</span>
+            <button class="back-btn" onclick="goBack()">
+                <span class="back-arrow">
+                    <svg viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M9 2L4 7L9 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </span>
+                换个心情
+            </button>
+        </div>
+
+        <div id="display-area">
+            <div id="develop-overlay"></div>
+            <div id="placeholder">
+                <div class="film-strip">
+                    <div class="film-hole"></div>
+                    <div class="film-hole"></div>
+                    <div class="film-hole"></div>
+                    <div class="film-hole"></div>
+                </div>
+                <p class="loading-text">Developing</p>
             </div>
-            <p class="loading-text">Developing</p>
+            <img id="final-img" src="" alt="电影拍立得">
         </div>
-        <img id="final-img" src="" alt="电影拍立得">
-    </div>
 
-    <!-- 运势条 -->
-    <div id="fortune-bar">
-        <div class="fortune-dot"></div>
-        <div class="fortune-content">
-            <div id="today-badge" class="today-badge" style="display:none"></div>
-            <p class="fortune-eyebrow">今日运势</p>
-            <p class="fortune-text" id="fortune-text"></p>
+        <div id="fortune-bar">
+            <div class="fortune-dot"></div>
+            <div class="fortune-content">
+                <p class="fortune-eyebrow">今日运势</p>
+                <div id="today-badge" class="today-badge" style="display:none"></div>
+                <p id="fortune-text" class="fortune-text"></p>
+            </div>
+        </div>
+
+        <p class="hint-text">↑ 长按图片保存 ↑</p>
+
+        <div class="nav-bar">
+            <button id="gen-btn" class="gen-btn" onclick="generate()">下一张 NEXT</button>
         </div>
     </div>
-
-    <p class="hint-text">↑ 长按图片保存 ↑</p>
 
     <!-- 隐藏渲染源 -->
     <div id="render-source">
-        <div id="capture-target" class="polaroid res-16-9">
+        <div id="capture-target" class="polaroid">
             <div class="photo-frame">
                 <img class="img-blur" id="source-img-blur" src="" alt="">
                 <img class="img-main" id="source-img"      src="" alt="">
@@ -454,122 +513,103 @@
         </div>
     </div>
 
-    <!-- 错误提示 -->
     <div id="error-toast" class="error-toast"></div>
 
-    <!-- 底部按钮 -->
-    <div class="nav-bar">
-        <div class="btn-row">
-            <button id="gen-btn" onclick="generate()" class="gen-btn">下一张 NEXT</button>
-            <button class="mood-change-btn" onclick="changeMood()">换心情</button>
-        </div>
-    </div>
-
     <script>
-        // ─── 状态 ──────────────────────────────────────────────────────────────
-        let currentRatio  = 'res-16-9';
-        let currentData   = null;
-        let isRendering   = false;
-        let currentMood   = '';       // happy / sad / courage / lonely / random
-        let isTodayMode   = false;
-        let audioCtx      = null;
+        let currentMood  = 'random';
+        let currentMode  = 'random';
+        let currentData  = null;
+        let isRendering  = false;
+        let audioCtx     = null;
 
-        // ─── 心情选择 ──────────────────────────────────────────────────────────
-        function selectMood(btn) {
-            document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
-            btn.classList.add('selected');
-            currentMood = btn.dataset.mood;
+        // ── 页面切换 ────────────────────────────────────────────────────────
+        function showMain() {
+            const moodScreen = document.getElementById('mood-screen');
+            const mainScreen = document.getElementById('main-screen');
+            moodScreen.classList.add('leaving');
+            setTimeout(() => {
+                moodScreen.classList.add('gone');
+                mainScreen.classList.add('visible');
+            }, 380);
         }
 
-        function toggleToday(btn) {
-            isTodayMode = !isTodayMode;
-            btn.classList.toggle('selected', isTodayMode);
-            btn.dataset.today = isTodayMode;
+        function goBack() {
+            const moodScreen = document.getElementById('mood-screen');
+            const mainScreen = document.getElementById('main-screen');
+            mainScreen.classList.remove('visible');
+            moodScreen.classList.remove('gone', 'leaving');
+            // 重置运势条
+            document.getElementById('fortune-bar').classList.remove('visible');
         }
 
-        function confirmMood() {
-            if (!currentMood) currentMood = 'random';
-            document.getElementById('mood-screen').classList.add('hidden');
+        // ── 心情入口（即刻跳转）────────────────────────────────────────────
+        function startWithMood(mood, mode) {
+            currentMood = mood || 'random';
+            currentMode = mode || 'random';
+            showMain();
             generate();
         }
 
-        function changeMood() {
-            // 重置选择状态
-            document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
-            document.getElementById('today-btn').classList.remove('selected');
-            isTodayMode = false;
-            document.getElementById('mood-screen').classList.remove('hidden');
-        }
-
-        // ─── 图片选择 ─────────────────────────────────────────────────────────
-        function pickImageForRatio(images, ratio) {
-            if (!images) return { b64: null, focal: { x: 50, y: 40 } };
-            return ratio === 'res-3-4' && images.poster?.b64
-                ? images.poster
-                : (images.backdrop?.b64 ? images.backdrop : images.poster);
-        }
-
-        function applyImage(images, ratio) {
-            const chosen  = pickImageForRatio(images, ratio);
-            const mainImg = document.getElementById('source-img');
-            mainImg.style.objectPosition = `${chosen.focal.x}% ${chosen.focal.y}%`;
-            mainImg.src = chosen.b64 || '';
-            return chosen.b64;
-        }
-
-        // ─── 比例切换 ─────────────────────────────────────────────────────────
-        function setRatio(r, btn) {
-            if (currentRatio === r) return;
-            currentRatio = r;
-            document.getElementById('capture-target').className = `polaroid ${r}`;
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            btn.classList.add('active');
-            if (currentData) {
-                const b64 = applyImage(currentData.images, r);
-                if (b64) {
-                    document.getElementById('source-img-blur').src = b64;
-                    renderCanvas({ silent: true });
-                }
-            }
-        }
-
-        // ─── 拍立得音效（Web Audio API 合成）─────────────────────────────────
-        function playShutter() {
+        // ── 音效：轻柔胶片卷动声 ────────────────────────────────────────────
+        // 三层叠加：细微的白噪擦过声 + 低沉的机械滚轮声 + 一声轻弹
+        function playFilmSound() {
             try {
                 if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 const ctx = audioCtx;
+                const t   = ctx.currentTime;
 
-                // 咔嗒声：短促噪声 burst
-                const bufSize = ctx.sampleRate * 0.04;
-                const buf     = ctx.createBuffer(1, bufSize, ctx.sampleRate);
-                const data    = buf.getChannelData(0);
-                for (let i = 0; i < bufSize; i++) {
-                    data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufSize, 6);
-                }
-                const click = ctx.createBufferSource();
-                click.buffer = buf;
-                const clickGain = ctx.createGain();
-                clickGain.gain.setValueAtTime(0.9, ctx.currentTime);
-                clickGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
-                click.connect(clickGain).connect(ctx.destination);
-                click.start(ctx.currentTime);
+                // 层 1：短促柔和的纸质擦过声（低通滤波白噪）
+                const noiseLen = ctx.sampleRate * 0.35;
+                const noiseBuf = ctx.createBuffer(1, noiseLen, ctx.sampleRate);
+                const nd       = noiseBuf.getChannelData(0);
+                for (let i = 0; i < noiseLen; i++) nd[i] = Math.random() * 2 - 1;
 
-                // 出片声：低频机械滑动音（短促正弦扫频）
-                const osc = ctx.createOscillator();
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(180, ctx.currentTime + 0.06);
-                osc.frequency.linearRampToValueAtTime(60, ctx.currentTime + 0.22);
-                const oscGain = ctx.createGain();
-                oscGain.gain.setValueAtTime(0, ctx.currentTime + 0.06);
-                oscGain.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.08);
-                oscGain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.22);
-                osc.connect(oscGain).connect(ctx.destination);
-                osc.start(ctx.currentTime + 0.06);
-                osc.stop(ctx.currentTime + 0.25);
-            } catch (e) { /* 静默失败，音效非核心功能 */ }
+                const noiseNode = ctx.createBufferSource();
+                noiseNode.buffer = noiseBuf;
+
+                const lpf = ctx.createBiquadFilter();
+                lpf.type            = 'lowpass';
+                lpf.frequency.value = 900;
+
+                const noiseGain = ctx.createGain();
+                noiseGain.gain.setValueAtTime(0, t);
+                noiseGain.gain.linearRampToValueAtTime(0.055, t + 0.04);
+                noiseGain.gain.linearRampToValueAtTime(0.04,  t + 0.18);
+                noiseGain.gain.linearRampToValueAtTime(0,     t + 0.35);
+
+                noiseNode.connect(lpf).connect(noiseGain).connect(ctx.destination);
+                noiseNode.start(t);
+
+                // 层 2：低沉机械滚轮（极短正弦脉冲 × 3，模拟齿轮卡格声）
+                [0.02, 0.09, 0.17].forEach((delay, i) => {
+                    const osc  = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type            = 'sine';
+                    osc.frequency.value = 90 - i * 10;
+                    gain.gain.setValueAtTime(0,     t + delay);
+                    gain.gain.linearRampToValueAtTime(0.07, t + delay + 0.008);
+                    gain.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.045);
+                    osc.connect(gain).connect(ctx.destination);
+                    osc.start(t + delay);
+                    osc.stop(t + delay + 0.05);
+                });
+
+                // 层 3：极轻的 "叮" 一声（出片完成感）
+                const bell  = ctx.createOscillator();
+                const bellG = ctx.createGain();
+                bell.type            = 'triangle';
+                bell.frequency.value = 1400;
+                bellG.gain.setValueAtTime(0,     t + 0.28);
+                bellG.gain.linearRampToValueAtTime(0.04, t + 0.29);
+                bellG.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+                bell.connect(bellG).connect(ctx.destination);
+                bell.start(t + 0.28);
+                bell.stop(t + 0.56);
+
+            } catch (e) { /* 静默失败 */ }
         }
 
-        // ─── 错误提示 ─────────────────────────────────────────────────────────
+        // ── 错误提示 ────────────────────────────────────────────────────────
         function showError(msg) {
             const toast = document.getElementById('error-toast');
             toast.textContent = msg;
@@ -577,18 +617,16 @@
             setTimeout(() => toast.classList.remove('show'), 3000);
         }
 
-        // ─── 胶片显影动画 ─────────────────────────────────────────────────────
-        function triggerDevelopAnimation() {
+        // ── 胶片显影动画 ────────────────────────────────────────────────────
+        function triggerDevelop() {
             const overlay = document.getElementById('develop-overlay');
             overlay.classList.remove('developing');
-            void overlay.offsetWidth; // reflow 强制重置动画
+            void overlay.offsetWidth;
             overlay.classList.add('developing');
-            overlay.addEventListener('animationend', () => {
-                overlay.classList.remove('developing');
-            }, { once: true });
+            overlay.addEventListener('animationend', () => overlay.classList.remove('developing'), { once: true });
         }
 
-        // ─── 渲染 Canvas ──────────────────────────────────────────────────────
+        // ── Canvas 渲染 ─────────────────────────────────────────────────────
         function renderCanvas({ silent = false } = {}) {
             if (isRendering) return;
             isRendering = true;
@@ -598,7 +636,7 @@
             const placeholder = document.getElementById('placeholder');
 
             if (silent) {
-                finalImg.style.opacity    = '0.35';
+                finalImg.style.opacity    = '0.3';
                 finalImg.style.transition = 'opacity 0.15s';
             } else {
                 btn.disabled              = true;
@@ -613,29 +651,26 @@
             }).then(canvas => {
                 finalImg.src              = canvas.toDataURL('image/jpeg', 0.95);
                 finalImg.style.display    = 'block';
+                finalImg.style.opacity    = '1';
                 placeholder.style.display = 'none';
-
                 if (!silent) {
-                    // 显影动画 + 音效同步触发
-                    triggerDevelopAnimation();
-                    playShutter();
+                    triggerDevelop();
+                    playFilmSound();
                     btn.disabled  = false;
                     btn.innerText = '下一张 NEXT';
                 }
-                finalImg.style.opacity = '1';
-
             }).catch(() => {
                 showError('渲染失败，请重试');
                 finalImg.style.opacity = '1';
                 if (!silent) {
-                    btn.disabled          = false;
-                    btn.innerText         = '下一张 NEXT';
+                    btn.disabled              = false;
+                    btn.innerText             = '下一张 NEXT';
                     placeholder.style.display = 'none';
                 }
             }).finally(() => { isRendering = false; });
         }
 
-        // ─── 主生成函数 ───────────────────────────────────────────────────────
+        // ── 主生成函数 ──────────────────────────────────────────────────────
         async function generate() {
             const btn         = document.getElementById('gen-btn');
             const finalImg    = document.getElementById('final-img');
@@ -649,42 +684,34 @@
             finalImg.style.opacity    = '1';
             fortuneBar.classList.remove('visible');
 
-            const mood = currentMood || 'random';
-            const mode = isTodayMode ? 'today' : 'random';
-
             try {
-                const res  = await fetch(`/api/generate?mood=${mood}&mode=${mode}`);
+                const res  = await fetch(`/api/generate?mood=${currentMood}&mode=${currentMode}`);
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
-
-                const chosen = pickImageForRatio(data.images, currentRatio);
-                if (!chosen?.b64) throw new Error('No image returned');
+                if (!data.image?.b64) throw new Error('No image');
 
                 currentData = data;
 
-                // 填充拍立得内容
                 document.getElementById('target-zh').innerText   = data.quote.zh;
                 document.getElementById('target-en').innerText   = data.quote.en;
                 document.getElementById('target-meta').innerText =
                     `${data.title}${data.year ? '  ' + data.year : ''}`;
 
-                // 填充运势条
-                if (data.quote?.fortune) {
+                // 运势条（仅 today 模式）
+                if (data.isTodayMovie && data.quote?.fortune) {
                     document.getElementById('fortune-text').innerText = data.quote.fortune;
                     const badge = document.getElementById('today-badge');
-                    if (data.isTodayMovie && data.todayLabel) {
-                        badge.textContent = `${data.todayLabel} 上映纪念`;
+                    if (data.todayLabel) {
+                        badge.textContent   = `${data.todayLabel} 上映纪念`;
                         badge.style.display = 'inline-block';
-                    } else {
-                        badge.style.display = 'none';
                     }
                     fortuneBar.classList.add('visible');
                 }
 
-                // 应用图片
+                const focal   = data.image.focal;
                 const mainImg = document.getElementById('source-img');
-                mainImg.style.objectPosition = `${chosen.focal.x}% ${chosen.focal.y}%`;
-                document.getElementById('source-img-blur').src = chosen.b64;
+                mainImg.style.objectPosition = `${focal.x}% ${focal.y}%`;
+                document.getElementById('source-img-blur').src = data.image.b64;
 
                 mainImg.onload  = () => renderCanvas({ silent: false });
                 mainImg.onerror = () => {
@@ -692,13 +719,13 @@
                     btn.disabled  = false;
                     btn.innerText = '下一张 NEXT';
                 };
-                mainImg.src = chosen.b64;
+                mainImg.src = data.image.b64;
 
             } catch (err) {
                 console.error(err);
                 showError('获取失败，请重试');
-                btn.disabled          = false;
-                btn.innerText         = '重试 RETRY';
+                btn.disabled              = false;
+                btn.innerText             = '重试 RETRY';
                 placeholder.style.display = 'none';
             }
         }
