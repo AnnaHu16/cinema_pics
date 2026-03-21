@@ -4,9 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>CineMood AI - 电影台词拍立得</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@700;900&family=DM+Serif+Display&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@700;900&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
 
     <style>
         :root {
@@ -15,8 +14,7 @@
             --dim: #888;
             --accent: #c8a97e;
         }
-
-        * { box-sizing: border-box; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
             background: #0c0b09;
@@ -26,8 +24,111 @@
             flex-direction: column;
             align-items: center;
             min-height: 100vh;
-            padding-bottom: 120px;
+            padding-bottom: 130px;
         }
+
+        /* ─── 心情选择屏 ─── */
+        #mood-screen {
+            position: fixed;
+            inset: 0;
+            background: #0c0b09;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 300;
+            padding: 32px;
+            gap: 0;
+        }
+        #mood-screen.hidden { display: none; }
+
+        .mood-eyebrow {
+            font-size: 10px;
+            letter-spacing: 0.45em;
+            color: #444;
+            text-transform: uppercase;
+            margin-bottom: 20px;
+        }
+        .mood-title {
+            font-family: 'Noto Serif SC', serif;
+            font-size: 26px;
+            font-weight: 900;
+            color: #fff;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        .mood-sub {
+            font-size: 12px;
+            color: #555;
+            margin-bottom: 48px;
+            text-align: center;
+        }
+        .mood-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            width: 100%;
+            max-width: 320px;
+            margin-bottom: 16px;
+        }
+        .mood-btn {
+            border: 1px solid #222;
+            background: #111;
+            border-radius: 12px;
+            padding: 20px 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .mood-btn:active { transform: scale(0.97); }
+        .mood-btn.selected { border-color: var(--accent); background: #1a1610; }
+        .mood-icon { font-size: 28px; line-height: 1; }
+        .mood-label { font-size: 13px; color: #aaa; letter-spacing: 0.05em; }
+        .mood-btn.selected .mood-label { color: var(--accent); }
+
+        .mood-divider { color: #333; font-size: 11px; margin: 4px 0 16px; letter-spacing: 0.2em; }
+
+        .today-btn {
+            width: 100%;
+            max-width: 320px;
+            border: 1px solid #222;
+            background: #0e0d0b;
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+            margin-bottom: 40px;
+        }
+        .today-btn:active { transform: scale(0.98); }
+        .today-btn.selected { border-color: var(--accent); background: #1a1610; }
+        .today-icon { font-size: 24px; }
+        .today-text { text-align: left; }
+        .today-title { font-size: 13px; color: #aaa; }
+        .today-btn.selected .today-title { color: var(--accent); }
+        .today-desc { font-size: 11px; color: #444; margin-top: 2px; }
+
+        .mood-confirm {
+            width: 100%;
+            max-width: 320px;
+            padding: 16px;
+            background: var(--accent);
+            color: #0c0b09;
+            border-radius: 6px;
+            font-weight: 900;
+            letter-spacing: 0.28em;
+            font-size: 12px;
+            text-transform: uppercase;
+            border: none;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .mood-confirm:active { opacity: 0.85; }
 
         /* ─── 隐藏渲染区域 ─── */
         #render-source {
@@ -37,7 +138,7 @@
             pointer-events: none;
         }
 
-        /* ─── 拍立得本体（用于 html2canvas 捕获）─── */
+        /* ─── 拍立得本体 ─── */
         .polaroid {
             background: var(--cream);
             padding: 16px 16px 52px 16px;
@@ -54,85 +155,31 @@
             position: relative;
         }
         .photo-frame .img-blur {
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            object-position: center;
+            position: absolute; inset: 0;
+            width: 100%; height: 100%;
+            object-fit: cover; object-position: center;
             filter: blur(20px) brightness(0.4) saturate(1.3);
             transform: scale(1.1);
             display: block;
         }
         .photo-frame .img-main {
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            object-position: center;
+            position: absolute; inset: 0;
+            width: 100%; height: 100%;
+            object-fit: contain; object-position: center;
             display: block;
         }
 
-        .res-16-9  .photo-frame { aspect-ratio: 16 / 9; }
-        .res-3-4   .photo-frame { aspect-ratio: 3 / 4; }
-        .res-1-1   .photo-frame { aspect-ratio: 1 / 1; }
+        .res-16-9 .photo-frame { aspect-ratio: 16 / 9; }
+        .res-3-4  .photo-frame { aspect-ratio: 3 / 4; }
+        .res-1-1  .photo-frame { aspect-ratio: 1 / 1; }
 
-        /* 台词区 */
-        .quote-area {
-            margin-top: 28px;
-            width: 100%;
-            padding: 0 20px;
-        }
-
-        /* 左侧竖线装饰 */
-        .quote-zh-wrap {
-            border-left: 3px solid var(--accent);
-            padding-left: 14px;
-            margin-bottom: 14px;
-        }
-
-        .quote-zh {
-            color: var(--ink);
-            font-family: 'Noto Serif SC', serif;
-            font-size: 26px;
-            font-weight: 900;
-            line-height: 1.6;
-            word-break: break-all;
-        }
-
-        .quote-en {
-            color: #999;
-            font-family: 'DM Serif Display', Georgia, serif;
-            font-size: 12px;
-            font-style: italic;
-            letter-spacing: 0.04em;
-            line-height: 1.5;
-        }
-
-        .movie-meta {
-            margin-top: 20px;
-            width: 100%;
-            display: flex;
-            justify-content: flex-end;
-            align-items: center;
-            gap: 6px;
-            padding-right: 8px;
-        }
-
-        .meta-dot {
-            width: 4px; height: 4px;
-            border-radius: 50%;
-            background: var(--accent);
-            flex-shrink: 0;
-        }
-
-        .meta-text {
-            color: var(--dim);
-            font-size: 11px;
-            font-style: italic;
-            font-family: Georgia, serif;
-        }
+        .quote-area { margin-top: 28px; width: 100%; padding: 0 20px; }
+        .quote-zh-wrap { border-left: 3px solid var(--accent); padding-left: 14px; margin-bottom: 14px; }
+        .quote-zh { color: var(--ink); font-family: 'Noto Serif SC', serif; font-size: 26px; font-weight: 900; line-height: 1.6; word-break: break-all; }
+        .quote-en { color: #999; font-family: 'DM Serif Display', Georgia, serif; font-size: 12px; font-style: italic; letter-spacing: 0.04em; line-height: 1.5; }
+        .movie-meta { margin-top: 20px; width: 100%; display: flex; justify-content: flex-end; align-items: center; gap: 6px; padding-right: 8px; }
+        .meta-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+        .meta-text { color: var(--dim); font-size: 11px; font-style: italic; font-family: Georgia, serif; }
 
         /* ─── 展示区 ─── */
         #display-area {
@@ -146,11 +193,27 @@
             position: relative;
         }
 
-        #final-img {
-            width: 100%;
-            height: auto;
-            display: none;
+        /* 胶片显影遮罩层 */
+        #develop-overlay {
+            position: absolute;
+            inset: 0;
+            background: #000;
+            z-index: 10;
+            pointer-events: none;
+            opacity: 0;
         }
+        #develop-overlay.developing {
+            animation: develop 1.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+        @keyframes develop {
+            0%   { opacity: 1; filter: brightness(0) sepia(1) saturate(0); }
+            30%  { opacity: 0.85; filter: brightness(0.3) sepia(0.8) saturate(0.4) hue-rotate(20deg); }
+            60%  { opacity: 0.4; filter: brightness(0.7) sepia(0.3) saturate(0.8); }
+            85%  { opacity: 0.1; filter: brightness(0.95) sepia(0.05) saturate(1); }
+            100% { opacity: 0; filter: none; }
+        }
+
+        #final-img { width: 100%; height: auto; display: none; }
 
         #placeholder {
             width: 100%;
@@ -162,12 +225,7 @@
             justify-content: center;
             gap: 12px;
         }
-
-        .film-strip {
-            display: flex;
-            gap: 4px;
-        }
-
+        .film-strip { display: flex; gap: 4px; }
         .film-hole {
             width: 8px; height: 8px;
             border-radius: 1px;
@@ -177,50 +235,68 @@
         .film-hole:nth-child(2) { animation-delay: 0.2s; }
         .film-hole:nth-child(3) { animation-delay: 0.4s; }
         .film-hole:nth-child(4) { animation-delay: 0.6s; }
-
         @keyframes flicker {
             0%, 100% { opacity: 0.3; }
             50% { opacity: 1; background: var(--accent); }
         }
+        .loading-text { color: #444; font-size: 10px; letter-spacing: 0.35em; text-transform: uppercase; }
 
-        .loading-text {
-            color: #444;
+        /* ─── 运势条 ─── */
+        #fortune-bar {
+            width: 92vw;
+            max-width: 420px;
+            margin-top: 14px;
+            padding: 14px 18px;
+            background: #111;
+            border: 1px solid #1e1c18;
+            border-radius: 8px;
+            display: none;
+            gap: 10px;
+            align-items: flex-start;
+        }
+        #fortune-bar.visible { display: flex; }
+        .fortune-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+            flex-shrink: 0;
+            margin-top: 5px;
+        }
+        .fortune-content { flex: 1; }
+        .fortune-eyebrow { font-size: 9px; color: #444; letter-spacing: 0.35em; text-transform: uppercase; margin-bottom: 5px; }
+        .fortune-text { font-size: 13px; color: #bbb; line-height: 1.65; font-family: 'Noto Serif SC', serif; }
+        .today-badge {
+            display: inline-block;
+            background: #1a1610;
+            color: var(--accent);
             font-size: 10px;
-            letter-spacing: 0.35em;
-            text-transform: uppercase;
+            padding: 2px 8px;
+            border-radius: 20px;
+            border: 1px solid #2e2518;
+            margin-bottom: 6px;
+            letter-spacing: 0.05em;
         }
 
         /* ─── 顶部比例切换栏 ─── */
         .ratio-tabs {
             position: fixed;
-            top: 0;
-            left: 0; right: 0;
+            top: 0; left: 0; right: 0;
             display: flex;
             justify-content: center;
-            gap: 0;
             background: rgba(12,11,9,0.92);
             backdrop-filter: blur(8px);
             padding: 14px 20px;
             border-bottom: 1px solid #1e1c18;
             z-index: 100;
         }
-
         .tab {
-            font-size: 11px;
-            font-weight: 600;
-            color: #444;
-            letter-spacing: 0.18em;
-            text-transform: uppercase;
-            padding: 7px 18px;
-            border-radius: 40px;
-            transition: all 0.2s ease;
-            white-space: nowrap;
+            font-size: 11px; font-weight: 600; color: #444;
+            letter-spacing: 0.18em; text-transform: uppercase;
+            padding: 7px 18px; border-radius: 40px;
+            transition: all 0.2s ease; white-space: nowrap;
+            background: none; border: none; cursor: pointer;
         }
-
-        .tab.active {
-            color: #0c0b09;
-            background: var(--accent);
-        }
+        .tab.active { color: #0c0b09; background: var(--accent); }
 
         /* ─── 底部按钮栏 ─── */
         .nav-bar {
@@ -228,62 +304,102 @@
             bottom: 0; left: 0; right: 0;
             background: rgba(12,11,9,0.95);
             backdrop-filter: blur(12px);
-            padding: 16px 20px;
-            padding-bottom: calc(16px + env(safe-area-inset-bottom));
+            padding: 12px 20px;
+            padding-bottom: calc(12px + env(safe-area-inset-bottom));
             display: flex;
-            justify-content: center;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
             border-top: 1px solid #1e1c18;
             z-index: 100;
         }
-
+        .btn-row { display: flex; gap: 10px; width: 85%; max-width: 320px; }
         .gen-btn {
-            width: 85%;
-            max-width: 320px;
-            padding: 15px;
+            flex: 1;
+            padding: 14px;
             background: #fff;
             color: #0c0b09;
             border-radius: 4px;
             font-weight: 900;
-            letter-spacing: 0.28em;
+            letter-spacing: 0.22em;
             text-transform: uppercase;
-            font-size: 12px;
+            font-size: 11px;
+            border: none; cursor: pointer;
             transition: opacity 0.2s, transform 0.15s;
-            border: none;
-            cursor: pointer;
         }
-
         .gen-btn:active { transform: scale(0.97); }
-        .gen-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-        /* 提示文字 */
-        .hint-text {
-            color: #333;
-            font-size: 10px;
-            letter-spacing: 0.38em;
-            margin-top: 16px;
-            text-align: center;
+        .gen-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+        .mood-change-btn {
+            padding: 14px 16px;
+            background: transparent;
+            color: #555;
+            border-radius: 4px;
+            font-size: 11px;
+            letter-spacing: 0.1em;
+            border: 1px solid #222;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: color 0.2s, border-color 0.2s;
         }
+        .mood-change-btn:active { color: var(--accent); border-color: var(--accent); }
+
+        .hint-text { color: #2a2a2a; font-size: 10px; letter-spacing: 0.38em; margin-top: 14px; text-align: center; }
 
         /* 错误提示 */
         .error-toast {
             position: fixed;
-            top: 70px;
-            left: 50%;
+            top: 70px; left: 50%;
             transform: translateX(-50%);
-            background: #ff4444;
-            color: #fff;
-            font-size: 12px;
-            padding: 8px 20px;
-            border-radius: 40px;
-            z-index: 200;
-            opacity: 0;
-            transition: opacity 0.3s;
+            background: #c0392b; color: #fff;
+            font-size: 12px; padding: 8px 20px;
+            border-radius: 40px; z-index: 200;
+            opacity: 0; transition: opacity 0.3s;
+            white-space: nowrap;
         }
         .error-toast.show { opacity: 1; }
     </style>
 </head>
 <body>
 
+    <!-- ① 心情选择屏 -->
+    <div id="mood-screen">
+        <p class="mood-eyebrow">CineMood AI</p>
+        <h1 class="mood-title">今天的心情是？</h1>
+        <p class="mood-sub">为你找到最合适的这一帧</p>
+
+        <div class="mood-grid">
+            <button class="mood-btn" data-mood="happy" onclick="selectMood(this)">
+                <span class="mood-icon">☀️</span>
+                <span class="mood-label">开心</span>
+            </button>
+            <button class="mood-btn" data-mood="sad" onclick="selectMood(this)">
+                <span class="mood-icon">🌧️</span>
+                <span class="mood-label">有点难过</span>
+            </button>
+            <button class="mood-btn" data-mood="courage" onclick="selectMood(this)">
+                <span class="mood-icon">🔥</span>
+                <span class="mood-label">需要勇气</span>
+            </button>
+            <button class="mood-btn" data-mood="lonely" onclick="selectMood(this)">
+                <span class="mood-icon">🌙</span>
+                <span class="mood-label">有点孤独</span>
+            </button>
+        </div>
+
+        <p class="mood-divider">— 或者 —</p>
+
+        <button class="today-btn" id="today-btn" data-today="false" onclick="toggleToday(this)">
+            <span class="today-icon">🎬</span>
+            <div class="today-text">
+                <p class="today-title">今日上映纪念版</p>
+                <p class="today-desc">找一部历史上今天上映的电影，附赠今日运势</p>
+            </div>
+        </button>
+
+        <button class="mood-confirm" onclick="confirmMood()">开始冲洗胶片 →</button>
+    </div>
+
+    <!-- ② 主界面 -->
     <!-- 比例切换 -->
     <div class="ratio-tabs">
         <button onclick="setRatio('res-16-9', this)" class="tab active">16:9</button>
@@ -293,6 +409,7 @@
 
     <!-- 展示区 -->
     <div id="display-area">
+        <div id="develop-overlay"></div>
         <div id="placeholder">
             <div class="film-strip">
                 <div class="film-hole"></div>
@@ -305,6 +422,16 @@
         <img id="final-img" src="" alt="电影拍立得">
     </div>
 
+    <!-- 运势条 -->
+    <div id="fortune-bar">
+        <div class="fortune-dot"></div>
+        <div class="fortune-content">
+            <div id="today-badge" class="today-badge" style="display:none"></div>
+            <p class="fortune-eyebrow">今日运势</p>
+            <p class="fortune-text" id="fortune-text"></p>
+        </div>
+    </div>
+
     <p class="hint-text">↑ 长按图片保存 ↑</p>
 
     <!-- 隐藏渲染源 -->
@@ -312,7 +439,7 @@
         <div id="capture-target" class="polaroid res-16-9">
             <div class="photo-frame">
                 <img class="img-blur" id="source-img-blur" src="" alt="">
-                <img class="img-main" id="source-img" src="" alt="">
+                <img class="img-main" id="source-img"      src="" alt="">
             </div>
             <div class="quote-area">
                 <div class="quote-zh-wrap">
@@ -328,20 +455,53 @@
     </div>
 
     <!-- 错误提示 -->
-    <div id="error-toast" class="error-toast">网络错误，请重试</div>
+    <div id="error-toast" class="error-toast"></div>
 
     <!-- 底部按钮 -->
     <div class="nav-bar">
-        <button id="gen-btn" onclick="generate()" class="gen-btn">下一张 NEXT</button>
+        <div class="btn-row">
+            <button id="gen-btn" onclick="generate()" class="gen-btn">下一张 NEXT</button>
+            <button class="mood-change-btn" onclick="changeMood()">换心情</button>
+        </div>
     </div>
 
     <script>
-        let currentRatio = 'res-16-9';
-        let currentData  = null;
-        let isRendering  = false;
+        // ─── 状态 ──────────────────────────────────────────────────────────────
+        let currentRatio  = 'res-16-9';
+        let currentData   = null;
+        let isRendering   = false;
+        let currentMood   = '';       // happy / sad / courage / lonely / random
+        let isTodayMode   = false;
+        let audioCtx      = null;
 
-        // 根据当前比例决定用 backdrop 还是 poster
-        // 3:4（小红书）用竖版海报，其余用横版剧照
+        // ─── 心情选择 ──────────────────────────────────────────────────────────
+        function selectMood(btn) {
+            document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            currentMood = btn.dataset.mood;
+        }
+
+        function toggleToday(btn) {
+            isTodayMode = !isTodayMode;
+            btn.classList.toggle('selected', isTodayMode);
+            btn.dataset.today = isTodayMode;
+        }
+
+        function confirmMood() {
+            if (!currentMood) currentMood = 'random';
+            document.getElementById('mood-screen').classList.add('hidden');
+            generate();
+        }
+
+        function changeMood() {
+            // 重置选择状态
+            document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
+            document.getElementById('today-btn').classList.remove('selected');
+            isTodayMode = false;
+            document.getElementById('mood-screen').classList.remove('hidden');
+        }
+
+        // ─── 图片选择 ─────────────────────────────────────────────────────────
         function pickImageForRatio(images, ratio) {
             if (!images) return { b64: null, focal: { x: 50, y: 40 } };
             return ratio === 'res-3-4' && images.poster?.b64
@@ -350,22 +510,21 @@
         }
 
         function applyImage(images, ratio) {
-            const chosen   = pickImageForRatio(images, ratio);
-            const sourceImg = document.getElementById('source-img');
-            sourceImg.style.objectPosition = `${chosen.focal.x}% ${chosen.focal.y}%`;
-            sourceImg.src = chosen.b64 || '';
+            const chosen  = pickImageForRatio(images, ratio);
+            const mainImg = document.getElementById('source-img');
+            mainImg.style.objectPosition = `${chosen.focal.x}% ${chosen.focal.y}%`;
+            mainImg.src = chosen.b64 || '';
             return chosen.b64;
         }
 
+        // ─── 比例切换 ─────────────────────────────────────────────────────────
         function setRatio(r, btn) {
             if (currentRatio === r) return;
             currentRatio = r;
             document.getElementById('capture-target').className = `polaroid ${r}`;
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             btn.classList.add('active');
-
             if (currentData) {
-                // 切换图片源（海报 ↔ 剧照）并重新渲染
                 const b64 = applyImage(currentData.images, r);
                 if (b64) {
                     document.getElementById('source-img-blur').src = b64;
@@ -374,6 +533,43 @@
             }
         }
 
+        // ─── 拍立得音效（Web Audio API 合成）─────────────────────────────────
+        function playShutter() {
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const ctx = audioCtx;
+
+                // 咔嗒声：短促噪声 burst
+                const bufSize = ctx.sampleRate * 0.04;
+                const buf     = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+                const data    = buf.getChannelData(0);
+                for (let i = 0; i < bufSize; i++) {
+                    data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufSize, 6);
+                }
+                const click = ctx.createBufferSource();
+                click.buffer = buf;
+                const clickGain = ctx.createGain();
+                clickGain.gain.setValueAtTime(0.9, ctx.currentTime);
+                clickGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
+                click.connect(clickGain).connect(ctx.destination);
+                click.start(ctx.currentTime);
+
+                // 出片声：低频机械滑动音（短促正弦扫频）
+                const osc = ctx.createOscillator();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(180, ctx.currentTime + 0.06);
+                osc.frequency.linearRampToValueAtTime(60, ctx.currentTime + 0.22);
+                const oscGain = ctx.createGain();
+                oscGain.gain.setValueAtTime(0, ctx.currentTime + 0.06);
+                oscGain.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.08);
+                oscGain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.22);
+                osc.connect(oscGain).connect(ctx.destination);
+                osc.start(ctx.currentTime + 0.06);
+                osc.stop(ctx.currentTime + 0.25);
+            } catch (e) { /* 静默失败，音效非核心功能 */ }
+        }
+
+        // ─── 错误提示 ─────────────────────────────────────────────────────────
         function showError(msg) {
             const toast = document.getElementById('error-toast');
             toast.textContent = msg;
@@ -381,6 +577,18 @@
             setTimeout(() => toast.classList.remove('show'), 3000);
         }
 
+        // ─── 胶片显影动画 ─────────────────────────────────────────────────────
+        function triggerDevelopAnimation() {
+            const overlay = document.getElementById('develop-overlay');
+            overlay.classList.remove('developing');
+            void overlay.offsetWidth; // reflow 强制重置动画
+            overlay.classList.add('developing');
+            overlay.addEventListener('animationend', () => {
+                overlay.classList.remove('developing');
+            }, { once: true });
+        }
+
+        // ─── 渲染 Canvas ──────────────────────────────────────────────────────
         function renderCanvas({ silent = false } = {}) {
             if (isRendering) return;
             isRendering = true;
@@ -400,20 +608,22 @@
             }
 
             html2canvas(document.getElementById('capture-target'), {
-                scale:           3,
-                backgroundColor: '#f8f4ee',
-                useCORS:         true,
-                allowTaint:      false,
-                logging:         false,
+                scale: 3, backgroundColor: '#f8f4ee',
+                useCORS: true, allowTaint: false, logging: false,
             }).then(canvas => {
-                finalImg.src          = canvas.toDataURL('image/jpeg', 0.95);
-                finalImg.style.display  = 'block';
-                finalImg.style.opacity  = '1';
+                finalImg.src              = canvas.toDataURL('image/jpeg', 0.95);
+                finalImg.style.display    = 'block';
                 placeholder.style.display = 'none';
+
                 if (!silent) {
-                    btn.disabled    = false;
-                    btn.innerText   = '下一张 NEXT';
+                    // 显影动画 + 音效同步触发
+                    triggerDevelopAnimation();
+                    playShutter();
+                    btn.disabled  = false;
+                    btn.innerText = '下一张 NEXT';
                 }
+                finalImg.style.opacity = '1';
+
             }).catch(() => {
                 showError('渲染失败，请重试');
                 finalImg.style.opacity = '1';
@@ -425,19 +635,25 @@
             }).finally(() => { isRendering = false; });
         }
 
+        // ─── 主生成函数 ───────────────────────────────────────────────────────
         async function generate() {
             const btn         = document.getElementById('gen-btn');
             const finalImg    = document.getElementById('final-img');
             const placeholder = document.getElementById('placeholder');
+            const fortuneBar  = document.getElementById('fortune-bar');
 
             btn.disabled              = true;
             btn.innerText             = 'DEVELOPING...';
             placeholder.style.display = 'flex';
             finalImg.style.display    = 'none';
             finalImg.style.opacity    = '1';
+            fortuneBar.classList.remove('visible');
+
+            const mood = currentMood || 'random';
+            const mode = isTodayMode ? 'today' : 'random';
 
             try {
-                const res  = await fetch('/api/generate');
+                const res  = await fetch(`/api/generate?mood=${mood}&mode=${mode}`);
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
 
@@ -446,24 +662,37 @@
 
                 currentData = data;
 
+                // 填充拍立得内容
                 document.getElementById('target-zh').innerText   = data.quote.zh;
                 document.getElementById('target-en').innerText   = data.quote.en;
                 document.getElementById('target-meta').innerText =
                     `${data.title}${data.year ? '  ' + data.year : ''}`;
 
-                const sourceImg = document.getElementById('source-img');
-                // 应用焦点坐标，让 object-fit:cover 以正确的位置裁剪
-                sourceImg.style.objectPosition = `${chosen.focal.x}% ${chosen.focal.y}%`;
+                // 填充运势条
+                if (data.quote?.fortune) {
+                    document.getElementById('fortune-text').innerText = data.quote.fortune;
+                    const badge = document.getElementById('today-badge');
+                    if (data.isTodayMovie && data.todayLabel) {
+                        badge.textContent = `${data.todayLabel} 上映纪念`;
+                        badge.style.display = 'inline-block';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                    fortuneBar.classList.add('visible');
+                }
 
-                // 模糊背景层同步相同图片源
+                // 应用图片
+                const mainImg = document.getElementById('source-img');
+                mainImg.style.objectPosition = `${chosen.focal.x}% ${chosen.focal.y}%`;
                 document.getElementById('source-img-blur').src = chosen.b64;
-                sourceImg.onload  = () => renderCanvas({ silent: false });
-                sourceImg.onerror = () => {
+
+                mainImg.onload  = () => renderCanvas({ silent: false });
+                mainImg.onerror = () => {
                     showError('图片加载失败');
                     btn.disabled  = false;
                     btn.innerText = '下一张 NEXT';
                 };
-                sourceImg.src = chosen.b64;
+                mainImg.src = chosen.b64;
 
             } catch (err) {
                 console.error(err);
@@ -473,8 +702,6 @@
                 placeholder.style.display = 'none';
             }
         }
-
-        window.onload = generate;
     </script>
 </body>
 </html>
