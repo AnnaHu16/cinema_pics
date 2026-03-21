@@ -480,7 +480,7 @@
         <div id="fortune-bar">
             <div class="fortune-dot"></div>
             <div class="fortune-content">
-                <p class="fortune-eyebrow">今日运势</p>
+                <p class="fortune-eyebrow">影评</p>
                 <div id="today-badge" class="today-badge" style="display:none"></div>
                 <p id="fortune-text" class="fortune-text"></p>
             </div>
@@ -550,61 +550,41 @@
             generate();
         }
 
-        // ── 音效：轻柔胶片卷动声 ────────────────────────────────────────────
-        // 三层叠加：细微的白噪擦过声 + 低沉的机械滚轮声 + 一声轻弹
+        // ── 音效：相机咔嚓声 ────────────────────────────────────────────────
+        // 两层：短促宽频噪声（快门撞击感）+ 低频衰减体（机械回弹）
         function playFilmSound() {
             try {
                 if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 const ctx = audioCtx;
                 const t   = ctx.currentTime;
 
-                // 层 1：短促柔和的纸质擦过声（低通滤波白噪）
-                const noiseLen = ctx.sampleRate * 0.35;
-                const noiseBuf = ctx.createBuffer(1, noiseLen, ctx.sampleRate);
-                const nd       = noiseBuf.getChannelData(0);
-                for (let i = 0; i < noiseLen; i++) nd[i] = Math.random() * 2 - 1;
+                // 层 1：咔嚓主体 — 极短宽频噪声，快速衰减
+                const clickLen = Math.floor(ctx.sampleRate * 0.055);
+                const clickBuf = ctx.createBuffer(1, clickLen, ctx.sampleRate);
+                const cd       = clickBuf.getChannelData(0);
+                for (let i = 0; i < clickLen; i++) {
+                    // 靠前段振幅大，迅速衰减 → 撞击感
+                    cd[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / clickLen, 3.5);
+                }
+                const clickSrc  = ctx.createBufferSource();
+                clickSrc.buffer = clickBuf;
+                const clickGain = ctx.createGain();
+                clickGain.gain.setValueAtTime(0.75, t);
+                clickGain.gain.exponentialRampToValueAtTime(0.001, t + 0.055);
+                clickSrc.connect(clickGain).connect(ctx.destination);
+                clickSrc.start(t);
 
-                const noiseNode = ctx.createBufferSource();
-                noiseNode.buffer = noiseBuf;
-
-                const lpf = ctx.createBiquadFilter();
-                lpf.type            = 'lowpass';
-                lpf.frequency.value = 900;
-
-                const noiseGain = ctx.createGain();
-                noiseGain.gain.setValueAtTime(0, t);
-                noiseGain.gain.linearRampToValueAtTime(0.055, t + 0.04);
-                noiseGain.gain.linearRampToValueAtTime(0.04,  t + 0.18);
-                noiseGain.gain.linearRampToValueAtTime(0,     t + 0.35);
-
-                noiseNode.connect(lpf).connect(noiseGain).connect(ctx.destination);
-                noiseNode.start(t);
-
-                // 层 2：低沉机械滚轮（极短正弦脉冲 × 3，模拟齿轮卡格声）
-                [0.02, 0.09, 0.17].forEach((delay, i) => {
-                    const osc  = ctx.createOscillator();
-                    const gain = ctx.createGain();
-                    osc.type            = 'sine';
-                    osc.frequency.value = 90 - i * 10;
-                    gain.gain.setValueAtTime(0,     t + delay);
-                    gain.gain.linearRampToValueAtTime(0.07, t + delay + 0.008);
-                    gain.gain.exponentialRampToValueAtTime(0.001, t + delay + 0.045);
-                    osc.connect(gain).connect(ctx.destination);
-                    osc.start(t + delay);
-                    osc.stop(t + delay + 0.05);
-                });
-
-                // 层 3：极轻的 "叮" 一声（出片完成感）
-                const bell  = ctx.createOscillator();
-                const bellG = ctx.createGain();
-                bell.type            = 'triangle';
-                bell.frequency.value = 1400;
-                bellG.gain.setValueAtTime(0,     t + 0.28);
-                bellG.gain.linearRampToValueAtTime(0.04, t + 0.29);
-                bellG.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
-                bell.connect(bellG).connect(ctx.destination);
-                bell.start(t + 0.28);
-                bell.stop(t + 0.56);
+                // 层 2：低频机械回弹 — 短促正弦，无高频成分
+                const thud  = ctx.createOscillator();
+                const thudG = ctx.createGain();
+                thud.type = 'sine';
+                thud.frequency.setValueAtTime(120, t + 0.002);
+                thud.frequency.exponentialRampToValueAtTime(55, t + 0.07);
+                thudG.gain.setValueAtTime(0.18, t + 0.002);
+                thudG.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+                thud.connect(thudG).connect(ctx.destination);
+                thud.start(t + 0.002);
+                thud.stop(t + 0.11);
 
             } catch (e) { /* 静默失败 */ }
         }
@@ -698,8 +678,8 @@
                     `${data.title}${data.year ? '  ' + data.year : ''}`;
 
                 // 运势条（仅 today 模式）
-                if (data.isTodayMovie && data.quote?.fortune) {
-                    document.getElementById('fortune-text').innerText = data.quote.fortune;
+                if (data.isTodayMovie && data.quote?.review) {
+                    document.getElementById('fortune-text').innerText = data.quote.review;
                     const badge = document.getElementById('today-badge');
                     if (data.todayLabel) {
                         badge.textContent   = `${data.todayLabel} 上映纪念`;
