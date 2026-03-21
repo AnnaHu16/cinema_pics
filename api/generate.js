@@ -6,12 +6,13 @@ export default async function handler(req, res) {
     const mode = req.query?.mode || 'random';
 
     const fallbackPool = [
-        { zh: "生活就像一盒巧克力，你永远不知道下一块是什么味道。", en: "Life is like a box of chocolates.", fortune: "今天的你，就是那颗最好吃的巧克力。" },
-        { zh: "你跳，我也跳。", en: "You jump, I jump.", fortune: "今天会有人陪你一起做傻事。" },
-        { zh: "明天又是新的一天。", en: "Tomorrow is another day.", fortune: "今天的烦恼到明天会变成一个故事开头。" },
-        { zh: "人生没有彩排，每天都是现场直播。", en: "Life has no rehearsal.", fortune: "今天直播效果出乎意料地好，放松去演吧。" },
+        { zh: "生活就像一盒巧克力，你永远不知道下一块是什么味道。", en: "Life is like a box of chocolates." },
+        { zh: "你跳，我也跳。", en: "You jump, I jump." },
+        { zh: "明天又是新的一天。", en: "Tomorrow is another day." },
+        { zh: "人生没有彩排，每天都是现场直播。", en: "Life has no rehearsal." },
     ];
     const fallbackQuote = fallbackPool[Math.floor(Math.random() * fallbackPool.length)];
+    const fallbackReview = "一部值得反复回味的电影，每一帧都藏着导演想说的话。";
 
     const moodStyleMap = {
         happy:   "选一句轻松欢快、令人微笑的台词",
@@ -108,15 +109,14 @@ export default async function handler(req, res) {
         const todayLabel = `${month}月${day}日`;
         const isTodayM   = mode === 'today';
 
-        // 今日运势只在 today 模式下生成
+        // 影评只在 today 模式下生成
         const fortuneInstruction = isTodayM ? `
-任务二：今日运势（仅在今日上映模式下）
-- 根据这句台词，为今天写一句"今日运势"
-- 风格要求：温暖治愈 + 带一点小幽默，像一个很懂你的朋友说的话
-- 可以调侃、可以有点哲学、可以带点小惊喜，但不能说教、不能鸡汤
-- 15–30 字，不需要引用台词原文，说你自己的话
-- 可以提到今天是《${movie.title}》上映纪念日这个巧合，但要自然，不要生硬
-- 示例风格："今天宇宙特别照顾你，但它只照顾到下午三点，之后靠自己。"
+任务二：一句影评（仅在今日上映模式下）
+- 为这部电影写一句发自内心的短评，像豆瓣高赞短评一样有温度
+- 风格：真实、有共鸣、可以带点诗意，但不堆砌辞藻，不写成广告语
+- 20–35 字，要让人读完想去看这部电影，或者想起自己看过的那一刻
+- 不要引用台词原文，说你对这部电影的感受
+- 可以自然地提一句"今天是它上映X周年"，但只有真的有纪念意义时才提
 ` : '';
 
         const aiPrompt = `你是电影台词专家。
@@ -132,7 +132,7 @@ export default async function handler(req, res) {
 ${fortuneInstruction}
 仅输出 JSON，不要其他内容：
 ${isTodayM
-    ? '{"zh":"中文台词","en":"English quote","fortune":"今日运势"}'
+    ? '{"zh":"中文台词","en":"English quote","review":"一句影评"}'
     : '{"zh":"中文台词","en":"English quote"}'
 }`;
 
@@ -152,9 +152,14 @@ ${isTodayM
             const raw    = aiData.choices?.[0]?.message?.content?.trim() || "";
             try {
                 const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim());
-                if (parsed.zh && parsed.en) quote = parsed;
+                if (parsed.zh && parsed.en) {
+                    quote = { zh: String(parsed.zh), en: String(parsed.en) };
+                    if (isTodayM && parsed.review) quote.review = String(parsed.review);
+                }
             } catch (e) { console.error("Quote parse error:", raw); }
         }
+        // 确保 today 模式有影评 fallback
+        if (isTodayM && !quote.review) quote.review = fallbackReview;
 
         res.status(200).json({
             title: movie.title || "未知电影",
