@@ -186,24 +186,32 @@
         .back-btn {
             display: flex;
             align-items: center;
-            gap: 6px;
-            font-size: 12px;
-            color: #555;
+            gap: 5px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #666;
             cursor: pointer;
-            padding: 8px 0;
-            border: none;
-            background: none;
-            transition: color 0.2s;
-            letter-spacing: 0.05em;
+            padding: 7px 13px 7px 10px;
+            border: 1px solid #2a2820;
+            border-radius: 40px;
+            background: #111008;
+            transition: color 0.18s, border-color 0.18s, background 0.18s;
+            letter-spacing: 0.08em;
+            white-space: nowrap;
         }
-        .back-btn:active { color: var(--accent); }
+        .back-btn:active {
+            color: var(--accent);
+            border-color: #3a2e18;
+            background: #1a1408;
+        }
         .back-arrow {
-            width: 16px; height: 16px;
+            width: 14px; height: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
+            flex-shrink: 0;
         }
-        .back-arrow svg { width: 14px; height: 14px; }
+        .back-arrow svg { width: 12px; height: 12px; }
 
         /* 图片展示区 */
         #display-area {
@@ -310,12 +318,45 @@
             font-family: 'Noto Serif SC', serif;
         }
 
-        .hint-text {
-            color: #222;
-            font-size: 10px;
-            letter-spacing: 0.4em;
-            margin-top: 16px;
-            text-align: center;
+        /* 长按提示条 */
+        .save-hint {
+            width: 92vw;
+            max-width: 440px;
+            margin-top: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 11px 18px;
+            background: #111008;
+            border: 1px solid #2a2820;
+            border-radius: 40px;
+            opacity: 0;
+            transform: translateY(6px);
+            transition: opacity 0.4s ease, transform 0.4s ease;
+            pointer-events: none;
+        }
+        .save-hint.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .save-hint.hide {
+            opacity: 0;
+            transform: translateY(4px);
+        }
+        .save-hint-icon {
+            font-size: 14px;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+        .save-hint-text {
+            font-size: 11px;
+            color: #555;
+            letter-spacing: 0.12em;
+        }
+        .save-hint-text strong {
+            color: var(--accent);
+            font-weight: 600;
         }
 
         /* 隐藏渲染源 */
@@ -459,7 +500,7 @@
                         <path d="M9 2L4 7L9 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                 </span>
-                换个心情
+                重新选择
             </button>
         </div>
 
@@ -486,7 +527,10 @@
             </div>
         </div>
 
-        <p class="hint-text">↑ 长按图片保存 ↑</p>
+        <div class="save-hint" id="save-hint">
+            <span class="save-hint-icon">👆</span>
+            <span class="save-hint-text"><strong>长按图片</strong>即可保存到相册</span>
+        </div>
 
         <div class="nav-bar">
             <button id="gen-btn" class="gen-btn" onclick="generate()">下一张 NEXT</button>
@@ -589,6 +633,23 @@
             } catch (e) { /* 静默失败 */ }
         }
 
+        // ── 长按保存提示（仅首次出现）────────────────────────────────────────
+        let hintShown = false;
+        function showSaveHint() {
+            const hint = document.getElementById('save-hint');
+            if (!hint) return;
+            // 每次图片出现都短暂显示，4秒后淡出
+            hint.classList.remove('hide');
+            hint.classList.add('show');
+            clearTimeout(hint._timer);
+            hint._timer = setTimeout(() => {
+                hint.classList.add('hide');
+                hint.addEventListener('transitionend', () => {
+                    hint.classList.remove('show', 'hide');
+                }, { once: true });
+            }, 4000);
+        }
+
         // ── 错误提示 ────────────────────────────────────────────────────────
         function showError(msg) {
             const toast = document.getElementById('error-toast');
@@ -638,6 +699,7 @@
                     playFilmSound();
                     btn.disabled  = false;
                     btn.innerText = '下一张 NEXT';
+                    showSaveHint();
                 }
             }).catch(() => {
                 showError('渲染失败，请重试');
