@@ -50,16 +50,26 @@
 
         .photo-frame {
             width: 100%;
-            background: #000;
             overflow: hidden;
             position: relative;
         }
-        .photo-frame img {
+        .photo-frame .img-blur {
             position: absolute;
             inset: 0;
             width: 100%;
             height: 100%;
             object-fit: cover;
+            object-position: center;
+            filter: blur(20px) brightness(0.4) saturate(1.3);
+            transform: scale(1.1);
+            display: block;
+        }
+        .photo-frame .img-main {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
             object-position: center;
             display: block;
         }
@@ -301,7 +311,8 @@
     <div id="render-source">
         <div id="capture-target" class="polaroid res-16-9">
             <div class="photo-frame">
-                <img id="source-img" src="" alt="">
+                <img class="img-blur" id="source-img-blur" src="" alt="">
+                <img class="img-main" id="source-img" src="" alt="">
             </div>
             <div class="quote-area">
                 <div class="quote-zh-wrap">
@@ -356,7 +367,10 @@
             if (currentData) {
                 // 切换图片源（海报 ↔ 剧照）并重新渲染
                 const b64 = applyImage(currentData.images, r);
-                if (b64) renderCanvas({ silent: true });
+                if (b64) {
+                    document.getElementById('source-img-blur').src = b64;
+                    renderCanvas({ silent: true });
+                }
             }
         }
 
@@ -441,6 +455,8 @@
                 // 应用焦点坐标，让 object-fit:cover 以正确的位置裁剪
                 sourceImg.style.objectPosition = `${chosen.focal.x}% ${chosen.focal.y}%`;
 
+                // 模糊背景层同步相同图片源
+                document.getElementById('source-img-blur').src = chosen.b64;
                 sourceImg.onload  = () => renderCanvas({ silent: false });
                 sourceImg.onerror = () => {
                     showError('图片加载失败');
